@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "arena",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["arena.js", "serve", "--no-open", "--port", "4177"],
+      "port": 4177
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "ai-arena",
+  "version": "1.0.0",
+  "description": "AI Arena — team analytics for Claude Code & Codex usage. Learn from your power users.",
+  "bin": { "arena": "./arena.js" },
+  "scripts": {
+    "analyze": "node arena.js analyze",
+    "grade": "node arena.js grade",
+    "serve": "node arena.js serve",
+    "start": "node arena.js serve"
+  },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED",
+  "private": true
+}

@@ -1,0 +1,225 @@
+{
+ "schema": 1,
+ "categories": {
+  "bugfix": {
+   "n": 15,
+   "sum": 96,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    5,
+    3,
+    3,
+    4,
+    0,
+    0
+   ]
+  },
+  "feature": {
+   "n": 15,
+   "sum": 94,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    5,
+    3,
+    5,
+    2,
+    0,
+    0
+   ]
+  },
+  "epic": {
+   "n": 25,
+   "sum": 184,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    7,
+    3,
+    10,
+    4,
+    0
+   ]
+  },
+  "testinfra": {
+   "n": 9,
+   "sum": 54,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    1,
+    2,
+    3,
+    2,
+    1,
+    0,
+    0
+   ]
+  },
+  "workflow": {
+   "n": 22,
+   "sum": 166,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    3,
+    9,
+    5,
+    5,
+    0
+   ]
+  },
+  "research": {
+   "n": 23,
+   "sum": 161,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    6,
+    2,
+    4,
+    8,
+    3,
+    0
+   ]
+  },
+  "ops": {
+   "n": 35,
+   "sum": 205,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    6,
+    9,
+    7,
+    10,
+    3,
+    0,
+    0
+   ]
+  },
+  "other": {
+   "n": 12,
+   "sum": 67,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    2,
+    5,
+    1,
+    4,
+    0,
+    0,
+    0
+   ]
+  }
+ },
+ "exemplars": {
+  "epic": [
+   {
+    "id": "demo-demo-ada-ex-epic-0",
+    "tool": "claude",
+    "model": "claude-fable-5",
+    "title": null,
+    "score": 9,
+    "note": "Scope in AND out, phased, with a verification gate per phase.",
+    "strengths": [
+     "explicit non-goals",
+     "verification plan"
+    ],
+    "weak": [],
+    "text": "We're adding multi-site support to acme-dashboard. Goal: a site switcher in the top nav that scopes every panel to the selected site.\n\nIn scope: nav switcher, per-site data scoping in the query layer, deep links (/site/:id/...), empty states for new sites. Out of scope: per-site permissions (next quarter), mobile layout changes.\n\nWork in phases — 1) query layer + tests, 2) nav + routing, 3) empty states + polish. After each phase run the e2e suite and show me a screenshot before moving on. Quality bar: no visible layout shift when switching sites.",
+    "tech": [
+     "plan",
+     "criteria",
+     "verify",
+     "scope"
+    ],
+    "project": "acme-dashboard",
+    "date": "2026-07-18"
+   }
+  ],
+  "bugfix": [
+   {
+    "id": "demo-demo-ada-ex-bugfix-0",
+    "tool": "claude",
+    "model": "claude-fable-5",
+    "title": null,
+    "score": 9,
+    "note": "Symptom, place, repro, expected behaviour — eleven seconds to read.",
+    "strengths": [
+     "precise anchor",
+     "expected behaviour"
+    ],
+    "weak": [],
+    "text": "Fix the flaky reconnect in acme-gateway: when the broker restarts, clients reconnect but subscriptions are silently dropped (repro: docker restart broker while watching /debug/subs — count goes to 0 and stays). Expected: subscriptions re-established within 5s. Suspect the resubscribe path in mqtt/session.ts.",
+    "tech": [
+     "anchors",
+     "criteria"
+    ],
+    "project": "acme-gateway",
+    "date": "2026-07-30"
+   }
+  ],
+  "workflow": [
+   {
+    "id": "demo-demo-ada-ex-workflow-0",
+    "tool": "claude",
+    "model": "claude-fable-5",
+    "title": null,
+    "score": 8,
+    "note": "Delegation with checkpoints — the agent knows when to stop and ask.",
+    "strengths": [
+     "checkpoints",
+     "clear stop condition"
+    ],
+    "weak": [
+     "could name the quality bar"
+    ],
+    "text": "Plan first, then implement. Break the migration into steps I can review; after each step, run the tests and stop if anything fails twice in a row. Use subagents for the mechanical renames so the main thread stays focused on the schema changes. Don't push anything — leave commits local for my review.",
+    "tech": [
+     "plan",
+     "verify",
+     "agents",
+     "scope"
+    ],
+    "project": "acme-firmware",
+    "date": "2026-08-02"
+   }
+  ]
+ },
+ "gradeRuns": [
+  {
+   "at": "2026-08-13T09:08:07.246Z",
+   "days": 30,
+   "sampled": 120,
+   "graded": 118,
+   "grader": "demo",
+   "byCat": {}
+  }
+ ]
+}

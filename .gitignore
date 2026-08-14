@@ -1,0 +1,5 @@
+# Local-only state: config, parse cache, extracted prompt texts.
+# Nothing in here is ever shared unless you copy it out yourself.
+.arena/
+node_modules/
+.DS_Store

@@ -1,0 +1,14 @@
+{
+ "name": "Demo · Ada",
+ "slug": "demo-ada",
+ "demo": true,
+ "machines": [
+  "demo"
+ ],
+ "tools": [
+  "claude"
+ ],
+ "firstSeen": "2026-04-25T09:08:07.246Z",
+ "lastSeen": "2026-08-13T09:08:07.246Z",
+ "updatedAt": "2026-08-13T09:08:07.246Z"
+}

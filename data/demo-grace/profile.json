@@ -1,0 +1,14 @@
+{
+ "name": "Demo · Grace",
+ "slug": "demo-grace",
+ "demo": true,
+ "machines": [
+  "demo"
+ ],
+ "tools": [
+  "codex"
+ ],
+ "firstSeen": "2026-04-25T09:08:07.252Z",
+ "lastSeen": "2026-08-13T09:08:07.252Z",
+ "updatedAt": "2026-08-13T09:08:07.252Z"
+}

@@ -1,0 +1,221 @@
+{
+ "schema": 1,
+ "categories": {
+  "bugfix": {
+   "n": 17,
+   "sum": 115,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    6,
+    6,
+    4,
+    0,
+    0
+   ]
+  },
+  "feature": {
+   "n": 11,
+   "sum": 70,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    3,
+    3,
+    3,
+    2,
+    0,
+    0
+   ]
+  },
+  "epic": {
+   "n": 28,
+   "sum": 204,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    3,
+    8,
+    1,
+    10,
+    6,
+    0
+   ]
+  },
+  "testinfra": {
+   "n": 29,
+   "sum": 181,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    4,
+    2,
+    10,
+    9,
+    4,
+    0,
+    0
+   ]
+  },
+  "workflow": {
+   "n": 18,
+   "sum": 134,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    4,
+    7,
+    2,
+    5,
+    0
+   ]
+  },
+  "research": {
+   "n": 19,
+   "sum": 128,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    8,
+    5,
+    5,
+    0,
+    0
+   ]
+  },
+  "ops": {
+   "n": 36,
+   "sum": 215,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    5,
+    9,
+    9,
+    8,
+    5,
+    0,
+    0
+   ]
+  },
+  "other": {
+   "n": 35,
+   "sum": 182,
+   "hist": [
+    0,
+    0,
+    0,
+    0,
+    14,
+    8,
+    5,
+    8,
+    0,
+    0,
+    0
+   ]
+  }
+ },
+ "exemplars": {
+  "testinfra": [
+   {
+    "id": "demo-demo-grace-ex-testinfra-0",
+    "tool": "codex",
+    "model": "gpt-5.6-sol",
+    "title": null,
+    "score": 9,
+    "note": "Names the framework, the flake, the fix criteria and how to prove it.",
+    "strengths": [
+     "what done means",
+     "how to run"
+    ],
+    "weak": [],
+    "text": "Our vitest suite in acme-api has three flaky specs (search \"retry(2)\" to find them). Root-cause each one instead of bumping retries — they share a leaked fake-timer pattern. Done means: retries removed, suite green 20 consecutive runs (`npm run test:loop 20`), and a short note in TESTING.md about the timer rule.",
+    "tech": [
+     "anchors",
+     "criteria",
+     "verify"
+    ],
+    "project": "acme-api",
+    "date": "2026-07-25"
+   }
+  ],
+  "research": [
+   {
+    "id": "demo-demo-grace-ex-research-0",
+    "tool": "codex",
+    "model": "gpt-5.6-sol",
+    "title": null,
+    "score": 8,
+    "note": "A question with depth and an output format — not \"look into it\".",
+    "strengths": [
+     "output format",
+     "bounded depth"
+    ],
+    "weak": [],
+    "text": "Before we pick a queue for acme-etl: compare Redis Streams vs NATS JetStream for our workload (5k msg/s bursts, at-least-once, 7-day replay). Read the actual docs, not blog posts. Output: a one-page table (throughput, replay, ops burden, our-stack fit) + your recommendation with the single strongest reason and the single biggest risk.",
+    "tech": [
+     "criteria",
+     "refs"
+    ],
+    "project": "acme-etl",
+    "date": "2026-08-05"
+   }
+  ],
+  "feature": [
+   {
+    "id": "demo-demo-grace-ex-feature-0",
+    "tool": "codex",
+    "model": "gpt-5.6-sol",
+    "title": null,
+    "score": 8,
+    "note": "Outcome + integration point + acceptance criteria in four sentences.",
+    "strengths": [
+     "integration point named"
+    ],
+    "weak": [
+     "no non-goals"
+    ],
+    "text": "Add CSV export to the acme-site admin orders table. Reuse the existing filter state so the export matches what's on screen. Stream it server-side (some tenants have 500k rows) — no in-memory buffering. Accept: a 500k-row export completes without the node process exceeding 300MB RSS.",
+    "tech": [
+     "anchors",
+     "criteria"
+    ],
+    "project": "acme-site",
+    "date": "2026-08-08"
+   }
+  ]
+ },
+ "gradeRuns": [
+  {
+   "at": "2026-08-13T09:08:07.251Z",
+   "days": 30,
+   "sampled": 120,
+   "graded": 118,
+   "grader": "demo",
+   "byCat": {}
+  }
+ ]
+}
