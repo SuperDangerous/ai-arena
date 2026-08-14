@@ -1,4 +1,4 @@
-import * as C from '/charts.js';
+import * as C from './charts.js';
 
 // ---------------- state ----------------
 // One global scope drives every page: 'all' (everyone) or a user slug.
@@ -303,7 +303,7 @@ function avatarEl(u, size = 20) {
 }
 function toolIcon(tool, size = 14) {
   const img = el('img', 'tico tico-' + tool);
-  img.src = `/assets/${tool}.png`;
+  img.src = `assets/${tool}.png`;
   img.alt = tool;
   img.style.width = img.style.height = size + 'px';
   return img;
