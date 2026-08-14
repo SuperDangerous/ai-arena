@@ -1622,7 +1622,7 @@ async function boot() {
   else mePill.textContent = 'no local data yet';
   if (DATA.config.demo) {
     document.querySelector('#tabs [data-view="setup"]').hidden = true;
-    const gh = el('a', 'icon-btn txt', 'GitHub ↗');
+    const gh = el('a', 'icon-btn txt gh', 'GitHub ↗');
     gh.href = 'https://github.com/SuperDangerous/ai-arena';
     gh.target = '_blank'; gh.rel = 'noopener';
     gh.title = 'Run it on your own logs — two demo teammates ship with the repo';

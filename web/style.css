@@ -413,3 +413,5 @@ button.linky { border: 0; background: none; color: var(--s1); cursor: pointer; f
 /* read-only hosted demo */
 .me-pill.demo { padding: 3px 12px; }
 a.icon-btn { display: inline-flex; align-items: center; text-decoration: none; }
+a.icon-btn.gh { background: linear-gradient(120deg, #1c5cab, #3987e5 55%, #22d3ee); color: #fff; border: 0; font-weight: 650; }
+a.icon-btn.gh:hover { filter: brightness(1.1); color: #fff; }
