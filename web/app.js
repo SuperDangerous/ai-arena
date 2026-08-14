@@ -1146,7 +1146,8 @@ function renderSetup() {
   const dhField = el('div', 'field');
   dhField.appendChild(el('label', null, 'Data home'));
   const dhInp = el('input', 'text'); dhInp.style.width = '340px';
-  dhInp.value = cfg.dataDir || ''; dhInp.placeholder = '~/Code/arena-data (blank = app repo\'s data/)';
+  dhInp.value = cfg.dataDirIsDefault ? '' : (cfg.dataDir || '');
+  dhInp.placeholder = '~/Code/arena-data (blank = app repo\'s data/)';
   dhField.appendChild(dhInp);
   const dhTag = el('span', 'setup-note', cfg.dataRepo ? '✓ git repo' : '⚠ not a git repo — publish needs one');
   dhField.appendChild(dhTag);
@@ -1227,6 +1228,16 @@ function renderSetup() {
   const s2 = step(2, gradedCount > 0, 'Grade prompt craft',
     [{ b: fmt.num(gradedCount) }, ' graded so far · ', { b: '…' }, ' awaiting'],
     'Your local AI CLI scores each sampled prompt 0–10 against the shared rubric (About tab). Every grade is cached forever — re-runs only grade new prompts, so this bill is incremental. Results feed your category averages, and prompts scoring ≥7 are auto-staged as candidate examples for the team (capped at the best 6 per category — you curate them in step 4).');
+  // both AI steps need a local CLI — guide instead of failing when absent
+  const noCli = !(DATA.config.graders || []).length;
+  const cliNote = () => {
+    const n = el('span', 'setup-note');
+    n.append('Needs an AI CLI on this machine: install ');
+    const a1 = el('a', null, 'Claude Code'); a1.href = 'https://claude.com/claude-code'; a1.target = '_blank';
+    const a2 = el('a', null, 'Codex CLI'); a2.href = 'https://developers.openai.com/codex/cli'; a2.target = '_blank';
+    n.appendChild(a1); n.append(' or '); n.appendChild(a2); n.append(' (either works), then restart the dashboard.');
+    return n;
+  };
   const grStatus = steps.querySelectorAll('.step-status')[1];
   const slider = el('input', 'slider'); slider.type = 'range'; slider.min = 0; slider.value = 0; slider.max = 0; slider.step = 5;
   const grEst = el('span', 'est', 'sizing…');
@@ -1247,7 +1258,8 @@ function renderSetup() {
   buttons.push(grBtn);
   slider.addEventListener('input', updateGrEst);
   grBtn.addEventListener('click', () => runJob({ cmd: 'grade', days: 30, sample: Number(slider.value) }));
-  s2.appendChild(grBtn); s2.appendChild(slider); s2.appendChild(grEst);
+  if (noCli) s2.appendChild(cliNote());
+  else { s2.appendChild(grBtn); s2.appendChild(slider); s2.appendChild(grEst); }
 
   // 3 · profile — always a deep read; cost depends only on history volume
   const s3 = step(3, nTraits > 0, 'Profile your habits',
@@ -1257,15 +1269,17 @@ function renderSetup() {
   const hbBtn = el('button', 'btn', nTraits ? 'Re-profile' : 'Profile habits');
   buttons.push(hbBtn);
   hbBtn.addEventListener('click', () => runJob({ cmd: 'habits', budget: 1000000 }));
-  s3.appendChild(hbBtn); s3.appendChild(hbEst);
+  if (noCli) s3.appendChild(cliNote());
+  else { s3.appendChild(hbBtn); s3.appendChild(hbEst); }
 
   // 4 · review & share
   const s4 = step(4, !!(me && DATA.git.repo && !dirty && (nEx || gradedCount)), 'Review & share',
     me ? [{ b: fmt.num(nEx) }, ' examples + ', { b: String(nTraits) }, ' traits staged · ',
       dirty ? { b: 'unpublished changes' } : DATA.git.repo ? '✓ in sync with the team' : '⚠ data home is not a git repo'] : ['—'],
     'Nothing leaves this machine until you publish. The cards below list exactly what a publish commits — session summaries, score aggregates, your staged examples (full text), and your technique profile. Remove any example or trait first; removals stick, even across re-grades. Publishing is a git commit + push of your folder only.');
-  const pubBtn = el('button', 'btn', dirty ? 'Publish — commit & push' : 'Published ✓');
-  pubBtn.disabled = !dirty || !DATA.git.repo;
+  const hasData = me && me.sessions.length;
+  const pubBtn = el('button', 'btn', !hasData ? 'Nothing to publish yet' : dirty ? 'Publish — commit & push' : 'Published ✓');
+  pubBtn.disabled = !dirty || !DATA.git.repo || !hasData;
   const pubMsg = el('span', 'setup-note');
   pubBtn.addEventListener('click', async () => {
     pubBtn.disabled = true; pubBtn.textContent = 'Publishing…'; pubMsg.textContent = 'committing and pushing…';
@@ -1433,6 +1447,7 @@ async function renderAbout() {
 // ---------------- shell ----------------
 function setView(v) {
   state.view = v;
+  if (('#' + v) !== location.hash) history.replaceState(null, '', '#' + v);
   for (const b of document.querySelectorAll('#tabs .tab')) b.classList.toggle('active', b.dataset.view === v);
   render();
 }
@@ -1608,7 +1623,9 @@ async function boot() {
     `${USERS.length} teammate${USERS.length === 1 ? '' : 's'} · dataset ${new Date(DATA.generatedAt).toLocaleString('en-IE')}`;
   buildSidebar();
   wireChrome();
-  render();
+  const hashView = location.hash.slice(1);
+  if (['overview', 'stats', 'prompts', 'setup', 'about'].includes(hashView)) setView(hashView);
+  else render();
   requestAnimationFrame(() => render()); // re-measure once layout has settled
   // reflect an already-running job in the Setup tab dot from anywhere
   fetch('/api/job').then((r) => r.json()).then((j) => {

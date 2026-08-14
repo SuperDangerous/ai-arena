@@ -8,9 +8,6 @@ dashboard to compare styles, steal techniques, and copy each other's best prompt
 
 ![AI Arena dashboard](docs/screenshot.png)
 
-Zero dependencies. Node 18+ and plain git. Nothing ever leaves a machine unless
-its owner commits and pushes it.
-
 ## The question it answers
 
 Given the same tools and similar experience, why is teammate X more effective with
@@ -26,36 +23,64 @@ AI than teammate Y? Leaderboards can't tell you. Arena gets at it three ways:
   writes an evidence-backed technique profile plus **copyable prompt templates in
   that person's voice**, with project specifics replaced by `<placeholders>`.
 
-## Quick start
+## Requirements
+
+- **Node 18+** — check with `node --version`; install from [nodejs.org](https://nodejs.org)
+  (macOS: `brew install node`). Arena tells you if your Node is too old.
+- **git** — for sharing data with your team (analysis works without it).
+- **An AI CLI you already use** — [Claude Code](https://claude.com/claude-code) or
+  [Codex CLI](https://developers.openai.com/codex/cli). Either works; this is both
+  the *source* of the session logs Arena analyses and the *engine* for grading and
+  profiling. No API keys are handled by Arena — it shells out to your logged-in CLI.
+
+## Get started
 
 ```bash
 git clone https://github.com/SuperDangerous/ai-arena.git
 cd ai-arena
-
-node arena.js init --user "Your Name" --avatar ~/photo.jpg
-node arena.js analyze --include Code/your-project   # parse local logs (whitelist recommended)
-node arena.js serve                                 # dashboard → run Grade & Profile from Setup
+node arena.js serve
 ```
 
-Everything after `serve` can be driven from the web UI: grading (with a
-how-many slider and live token/cost estimate), habit profiling, scope and
-profile settings, and publishing. Two clearly-badged demo teammates ship in the
-repo so the team views are explorable immediately (`node arena.js demo --remove`).
+That's it — everything else happens in the dashboard, which opens with two demo
+teammates so you can explore before adding your own data. Head to the **Setup**
+tab and work top to bottom:
+
+![Setup tab](docs/setup.png)
+
+1. **Profile** — your display name and a photo (the photo is *copied* into your
+   data folder, resized to 256px; the original is never referenced again).
+2. **Data scope** — two decisions before your first analysis:
+   - **Data home**: where your dataset lives. Leave blank to keep it inside this
+     repo, or — recommended for teams — point it at a **separate private git
+     repo** (e.g. `~/Code/ai-arena-data`, cloned from your org). Every read,
+     write, avatar, and publish commit follows this setting.
+   - **Include list**: which projects may enter your dataset. Nothing outside it
+     is ever ingested.
+3. **Your pipeline** — four steps with live state and honest cost estimates:
+   **Collect** (parse local logs — free, incremental, seconds after the first
+   run) → **Grade** (score prompts against the rubric; slider + token/cost
+   estimate before you commit to anything) → **Profile** (the deep habits read) →
+   **Review & share** (see exactly what a publish commits, item by item, remove
+   anything, then one click to commit & push).
+
+If something's missing, Arena says so rather than failing: no logs yet → it names
+the CLIs and where their logs live; no AI CLI → Grade/Profile show install links;
+data home isn't a git repo → publishing is disabled with instructions. Prefer the
+terminal? Every step has a CLI equivalent (below).
 
 ## Team setup: a shared data repo
 
-Keep the tool public and your data private by pointing Arena's **data home** at a
-separate private repo:
+Keep the tool public and your data private:
 
 ```bash
 git clone https://github.com/your-org/ai-arena-data.git ~/Code/ai-arena-data
-node arena.js init --data-dir ~/Code/ai-arena-data    # or Setup → Data home
+# then in Setup → Data scope → Data home: ~/Code/ai-arena-data
 ```
 
-Every read, write, avatar, and publish commit follows the data home. Teammates
-run the tool at whatever cadence they like — sessions merge by id, so patchy
-monthly runs still accumulate into one coherent history per person, even when
-local logs get purged in between.
+Teammates run Arena at whatever cadence they like — sessions merge by id, so
+patchy monthly runs still accumulate into one coherent history per person, even
+when local logs get purged in between. `git pull` in the data repo brings in
+everyone who has published.
 
 ## What gets shared (and what doesn't)
 
@@ -67,12 +92,10 @@ local logs get purged in between.
 | Your **habit profile** + copyable templates | `.arena/` config & caches |
 | Profile: display name, avatar, machines, first/last activity | Removed examples & traits (parked locally) |
 
-The Setup tab is a four-step pipeline — Collect → Grade → Profile → Share — with
-live state at each step (what's ingested, graded vs ungraded, staged vs
-published), honest token/cost estimates before every AI step, and a review
-surface listing exactly what a publish would commit, item by item, each removable.
+Nothing leaves a machine until its owner presses publish (or runs
+`node arena.js publish`), and the review surface lists every item that would ship.
 
-## Commands
+## CLI reference
 
 ```text
 init      --user <name> [--avatar <img>] [--data-dir <path>]
@@ -99,10 +122,10 @@ logs resume from a stored byte offset — warm re-analyses take well under a sec
 - **Cost is API-equivalent** at list prices from the editable
   [`pricing.json`](pricing.json) — read it as *value extracted*, not money spent.
   Unverified model prices are flagged and render with ≈.
-- **Grading** runs through whichever CLI you have (Claude Code or Codex),
-  defaulting to its strongest model — on a 250-prompt benchmark two frontier
-  graders agreed with each other at r = 0.86 while a budget model ran ~1.5 points
-  harsher and noisier. Every grade is cached forever, so scores never drift.
+- **Grading** runs through whichever CLI you have, defaulting to its strongest
+  model — on a 250-prompt benchmark two frontier graders agreed with each other
+  at r = 0.86 while a budget model ran ~1.5 points harsher and noisier. Every
+  grade is cached forever, so scores never drift.
 - **Energy** is shown as a clearly-marked rough estimate (no vendor publishes
   per-token energy); the Wh-per-million-token factors are editable.
 
@@ -121,3 +144,7 @@ RUBRIC.md         the grading rubric
 ARCHITECTURE.md   internals
 data/demo-*/      demo teammates (safe to delete)
 ```
+
+## License
+
+[MIT](LICENSE)

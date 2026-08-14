@@ -10,6 +10,6 @@
     "start": "node arena.js serve"
   },
   "engines": { "node": ">=18" },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "private": true
 }

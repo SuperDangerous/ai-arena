@@ -2,6 +2,15 @@
 'use strict';
 // AI Arena — analyze local Claude Code / Codex logs, grade prompt
 // craft with a local AI, and share what you choose with the team.
+
+// Friendly gate before any modern syntax loads (this block is ES5 on purpose).
+var nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
+if (nodeMajor < 18) {
+  console.error('AI Arena needs Node 18 or newer — you are running Node ' + process.versions.node + '.');
+  console.error('Upgrade: https://nodejs.org  (macOS: `brew install node`, or use nvm/fnm)');
+  process.exit(1);
+}
+
 const path = require('path');
 const { parseArgs, log, fmt } = require('./lib/util');
 
