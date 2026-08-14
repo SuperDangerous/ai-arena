@@ -1592,7 +1592,7 @@ function wireChrome() {
 
 function initTheme() {
   const saved = localStorage.getItem('arena-theme');
-  document.documentElement.dataset.theme = saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.dataset.theme = saved || 'dark';
 }
 
 function hydrateUsers() {
