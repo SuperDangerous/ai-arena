@@ -1617,17 +1617,17 @@ async function boot() {
   const mePill = document.getElementById('me-pill');
   const meUser = USERS.find((u) => u.slug === DATA.me);
   mePill.replaceChildren();
-  if (DATA.config.demo) mePill.textContent = 'read-only demo';
+  if (DATA.config.demo) { mePill.textContent = 'read-only demo'; mePill.classList.add('demo'); }
   else if (meUser) { mePill.appendChild(avatarEl(meUser, 20)); mePill.appendChild(el('span', null, meUser.name)); }
   else mePill.textContent = 'no local data yet';
   if (DATA.config.demo) {
     document.querySelector('#tabs [data-view="setup"]').hidden = true;
-    const banner = el('div', 'demo-banner');
-    banner.append('Hosted demo with two synthetic teammates — read-only. Run it on your own logs: ');
-    const a = el('a', null, 'github.com/SuperDangerous/ai-arena');
-    a.href = 'https://github.com/SuperDangerous/ai-arena';
-    banner.appendChild(a);
-    document.getElementById('app').insertBefore(banner, document.querySelector('.shell'));
+    const gh = el('a', 'icon-btn txt', 'GitHub ↗');
+    gh.href = 'https://github.com/SuperDangerous/ai-arena';
+    gh.target = '_blank'; gh.rel = 'noopener';
+    gh.title = 'Run it on your own logs — two demo teammates ship with the repo';
+    const right = document.querySelector('.topbar-right');
+    right.insertBefore(gh, document.getElementById('help-toggle'));
   }
   updateSetupDot();
   document.getElementById('foot-meta').textContent =
