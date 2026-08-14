@@ -1,0 +1,83 @@
+{
+ "schema": 1,
+ "generatedAt": "2026-08-14T12:32:12.947Z",
+ "grader": "claude",
+ "sessionsSampled": 74,
+ "promptsSampled": 812,
+ "budgetChars": 244000,
+ "summary": "Ada opens big work with edges, not features: every epic starts by naming what is out of scope before what is in, then cuts the rest into phases that each end at a verification gate. The agent proves a phase (test run, screenshot) before the next begins, and acceptance criteria arrive as observable outcomes rather than adjectives. Bugs get the same discipline in miniature — repro command, observed symptom, suspected file — so the first agent turn is a fix attempt, not a search. Mechanical work is pushed down to subagents; anything irreversible stays in the main thread for review.",
+ "traits": [
+  {
+   "title": "Scopes out before scoping in",
+   "kind": "scoping",
+   "strength": 3,
+   "detail": "Epics open with an explicit in-scope / out-of-scope split, so the agent never wanders into next quarter's work.",
+   "evidence": [
+    {
+     "quote": "Out of scope: per-site permissions (next quarter), mobile layout changes."
+    }
+   ]
+  },
+  {
+   "title": "Phases with a verification gate each",
+   "kind": "planning",
+   "strength": 3,
+   "detail": "Large work is cut into reviewable phases, and the agent must prove each one before the next begins.",
+   "evidence": [
+    {
+     "quote": "After each phase run the e2e suite and show me a screenshot before moving on."
+    }
+   ]
+  },
+  {
+   "title": "Quality bars are observable, not adjectives",
+   "kind": "standards",
+   "strength": 2,
+   "detail": "Acceptance criteria are stated as things you could check — which makes \"done\" checkable too.",
+   "evidence": [
+    {
+     "quote": "Quality bar: no visible layout shift when switching sites."
+    }
+   ]
+  },
+  {
+   "title": "Anchors bugs to the exact repro",
+   "kind": "verification",
+   "strength": 3,
+   "detail": "Bug reports carry the repro command, the observable symptom and the suspected file.",
+   "evidence": [
+    {
+     "quote": "repro: docker restart broker while watching /debug/subs — count goes to 0 and stays"
+    }
+   ]
+  },
+  {
+   "title": "Delegates the mechanical, keeps the risky",
+   "kind": "delegation",
+   "strength": 2,
+   "detail": "Subagents get renames and boilerplate; schema changes and anything irreversible stay under review.",
+   "evidence": [
+    {
+     "quote": "Use subagents for the mechanical renames so the main thread stays focused on the schema changes."
+    }
+   ]
+  }
+ ],
+ "templates": [
+  {
+   "title": "Open an epic with edges",
+   "trait": "Scopes out before scoping in",
+   "prompt": "We're adding <feature> to <project>. Goal: <one-sentence outcome>.\n\nIn scope: <a, b, c>. Out of scope: <x (deferred to when)>, <y>.\n\nWork in phases — 1) <phase>, 2) <phase>, 3) <phase>. After each phase run <suite> and show me <proof> before moving on. Quality bar: <observable outcome>."
+  },
+  {
+   "title": "Bug report in four beats",
+   "trait": "Anchors bugs to the exact repro",
+   "prompt": "Fix <symptom> in <project>: when <trigger>, <observed behaviour> (repro: <command> while watching <where> — <what you see>). Expected: <behaviour, with a limit>. Suspect <file or path>."
+  },
+  {
+   "title": "Delegate with a stop condition",
+   "trait": "Delegates the mechanical, keeps the risky",
+   "prompt": "Plan first, then implement. Break <the work> into steps I can review; after each step run <tests> and stop if anything fails twice in a row. Use subagents for <the mechanical part>. Don't push anything — leave commits local for my review."
+  }
+ ]
+}

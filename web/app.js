@@ -289,7 +289,7 @@ function fmtEnergy(wh) {
 function avatarEl(u, size = 20) {
   if (u.profile && u.profile.avatar) {
     const img = el('img', 'avatar');
-    img.src = `/data/${u.slug}/${u.profile.avatar}`;
+    img.src = `data/${u.slug}/${u.profile.avatar}`;
     img.alt = '';
     img.style.width = img.style.height = size + 'px';
     return img;
@@ -388,7 +388,7 @@ function traitsReview(u, { curate: canCurate } = {}) {
     if (canCurate) {
       const rm = el('button', 'p-copy', 'Remove');
       rm.addEventListener('click', async () => {
-        const res = await fetch('/api/habit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ index: i }) }).then((r) => r.json()).catch(() => ({ ok: false }));
+        const res = await fetch('api/habit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ index: i }) }).then((r) => r.json()).catch(() => ({ ok: false }));
         if (res.ok) { u.habits.traits.splice(i, 1); if (!DATA.git.dirty.includes(DATA.me)) DATA.git.dirty.push(DATA.me); updateSetupDot(); render(); }
       });
       head.appendChild(rm);
@@ -815,7 +815,7 @@ function renderStats() {
 
 // ---------------- prompts ----------------
 async function curate(cat, id, action) {
-  const res = await fetch('/api/exemplar', {
+  const res = await fetch('api/exemplar', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ cat, id, action }),
   });
@@ -1038,6 +1038,7 @@ function renderShareSection() {
 let jobTimer = null;
 let jobRunning = false;
 function updateSetupDot() {
+  if (DATA.config.demo) return;
   const dot = document.getElementById('setup-dot');
   if (jobRunning) { dot.hidden = false; dot.classList.add('run'); }
   else {
@@ -1048,7 +1049,7 @@ function updateSetupDot() {
 function pollJob(logEl, onDone) {
   clearInterval(jobTimer);
   const tick = async () => {
-    const j = await fetch('/api/job').then((r) => r.json()).catch(() => null);
+    const j = await fetch('api/job').then((r) => r.json()).catch(() => null);
     if (!j) return;
     jobRunning = j.running;
     updateSetupDot();
@@ -1108,7 +1109,7 @@ function renderSetup() {
   const nameBtn = el('button', 'btn subtle', 'Save name');
   const nameMsg = el('span', 'setup-note');
   nameBtn.addEventListener('click', async () => {
-    const res = await fetch('/api/profile', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ user: nameInp.value }) }).then((r) => r.json()).catch(() => ({ ok: false }));
+    const res = await fetch('api/profile', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ user: nameInp.value }) }).then((r) => r.json()).catch(() => ({ ok: false }));
     nameMsg.textContent = res.ok ? 'Saved.' : (res.error || 'Failed.');
     if (res.ok) await reloadData();
   });
@@ -1119,7 +1120,7 @@ function renderSetup() {
   avField.appendChild(el('label', null, 'Photo'));
   if (me && me.profile.avatar) {
     const img = el('img', 'avatar-lg');
-    img.src = `/data/${me.slug}/${me.profile.avatar}?t=${DATA.generatedAt}`;
+    img.src = `data/${me.slug}/${me.profile.avatar}?t=${DATA.generatedAt}`;
     avField.appendChild(img);
   } else if (me) avField.appendChild(avatarEl(me, 56));
   const file = el('input'); file.type = 'file'; file.accept = 'image/png,image/jpeg,image/webp,image/gif'; file.hidden = true;
@@ -1129,7 +1130,7 @@ function renderSetup() {
   file.addEventListener('change', async () => {
     const f = file.files[0]; if (!f) return;
     avMsg.textContent = 'Uploading…';
-    const res = await fetch('/api/avatar', { method: 'POST', headers: { 'content-type': f.type }, body: f }).then((r) => r.json()).catch(() => ({ ok: false }));
+    const res = await fetch('api/avatar', { method: 'POST', headers: { 'content-type': f.type }, body: f }).then((r) => r.json()).catch(() => ({ ok: false }));
     avMsg.textContent = res.ok ? 'Saved.' : (res.error || 'Failed.');
     if (res.ok) await reloadData();
   });
@@ -1161,7 +1162,7 @@ function renderSetup() {
   scopeBtn.addEventListener('click', async () => {
     const body = { include: inc.get(), excludes: exc.get(), sources: src.get() };
     if (dhInp.value.trim() !== (cfg.dataDir || '')) body.dataDir = dhInp.value.trim() || null;
-    const res = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json()).catch(() => ({ ok: false }));
+    const res = await fetch('api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json()).catch(() => ({ ok: false }));
     scopeMsg.textContent = res.ok ? (res.warning ? `Saved. ⚠ ${res.warning}` : 'Saved — run an analysis to apply.') : (res.error || 'Failed.');
     if (res.ok) { DATA.config = { ...cfg, ...res.config }; await reloadData(); setView('setup'); }
   });
@@ -1187,7 +1188,7 @@ function renderSetup() {
   const runJob = async (body) => {
     busyUI();
     logEl.textContent = 'starting…';
-    const res = await fetch('/api/run', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json()).catch(() => ({ ok: false, error: 'request failed' }));
+    const res = await fetch('api/run', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json()).catch(() => ({ ok: false, error: 'request failed' }));
     if (!res.ok && res.error === 'busy') { logEl.textContent = `A ${res.running} run is already in progress — showing its live log.\n`; watch(); return; }
     if (!res.ok) { logEl.textContent = res.error || 'failed to start'; idleUI(); return; }
     jobRunning = true; updateSetupDot();
@@ -1283,7 +1284,7 @@ function renderSetup() {
   const pubMsg = el('span', 'setup-note');
   pubBtn.addEventListener('click', async () => {
     pubBtn.disabled = true; pubBtn.textContent = 'Publishing…'; pubMsg.textContent = 'committing and pushing…';
-    const res = await fetch('/api/publish', { method: 'POST' }).then((r) => r.json()).catch(() => ({ ok: false, error: 'request failed' }));
+    const res = await fetch('api/publish', { method: 'POST' }).then((r) => r.json()).catch(() => ({ ok: false, error: 'request failed' }));
     if (res.ok && res.pushed) { pubMsg.textContent = 'Published ✓'; await reloadData(); }
     else if (res.ok) { pubMsg.textContent = res.error || 'Committed; push failed — run git push manually.'; await reloadData(); }
     else { pubMsg.textContent = res.error || 'Publish failed.'; pubBtn.disabled = false; pubBtn.textContent = 'Publish — commit & push'; }
@@ -1294,7 +1295,7 @@ function renderSetup() {
   view.appendChild(pipe);
 
   // live sizing for step 2 + 3
-  fetch('/api/run-estimate?days=30').then((r) => r.json()).then((e) => {
+  fetch('api/run-estimate?days=30').then((r) => r.json()).then((e) => {
     estState = e;
     slider.max = Math.min(1000, e.candidates || 0);
     slider.value = Math.min(250, e.candidates || 0);
@@ -1316,7 +1317,7 @@ function renderSetup() {
   }).catch(() => { grEst.textContent = 'estimate unavailable'; });
 
   // a run may already be in flight (started earlier or in another window)
-  fetch('/api/job').then((r) => r.json()).then((j) => {
+  fetch('api/job').then((r) => r.json()).then((j) => {
     if (j && j.running) { logEl.textContent = (j.log || []).join('\n'); watch(); }
   }).catch(() => {});
 
@@ -1416,7 +1417,7 @@ async function renderAbout() {
   rp.appendChild(el('p', null, 'The standard the grader applies, word for word — argue with the standard, not the scores. It lives in RUBRIC.md in the repo.'));
   rub.appendChild(rp); view.appendChild(rub);
   try {
-    const md = await (await fetch('/RUBRIC.md')).text();
+    const md = await (await fetch('RUBRIC.md')).text();
     mdRender(md.replace(/^# .*\n/, ''), rp);
   } catch { rp.textContent = 'RUBRIC.md not found'; }
 
@@ -1464,7 +1465,7 @@ function render() {
 
 // Refetch the dataset in place (after web-triggered actions) without losing view state.
 async function reloadData() {
-  const res = await fetch('/api/dataset?fresh=1');
+  const res = await fetch('api/dataset?fresh=1');
   DATA = await res.json();
   hydrateUsers();
   memo.clear();
@@ -1609,26 +1610,38 @@ function hydrateUsers() {
 
 async function boot() {
   initTheme();
-  const res = await fetch('/api/dataset');
+  const res = await fetch('api/dataset');
   DATA = await res.json();
   hydrateUsers();
 
   const mePill = document.getElementById('me-pill');
   const meUser = USERS.find((u) => u.slug === DATA.me);
   mePill.replaceChildren();
-  if (meUser) { mePill.appendChild(avatarEl(meUser, 20)); mePill.appendChild(el('span', null, meUser.name)); }
+  if (DATA.config.demo) mePill.textContent = 'read-only demo';
+  else if (meUser) { mePill.appendChild(avatarEl(meUser, 20)); mePill.appendChild(el('span', null, meUser.name)); }
   else mePill.textContent = 'no local data yet';
+  if (DATA.config.demo) {
+    document.querySelector('#tabs [data-view="setup"]').hidden = true;
+    const banner = el('div', 'demo-banner');
+    banner.append('Hosted demo with two synthetic teammates — read-only. Run it on your own logs: ');
+    const a = el('a', null, 'github.com/SuperDangerous/ai-arena');
+    a.href = 'https://github.com/SuperDangerous/ai-arena';
+    banner.appendChild(a);
+    document.getElementById('app').insertBefore(banner, document.querySelector('.shell'));
+  }
   updateSetupDot();
   document.getElementById('foot-meta').textContent =
     `${USERS.length} teammate${USERS.length === 1 ? '' : 's'} · dataset ${new Date(DATA.generatedAt).toLocaleString('en-IE')}`;
   buildSidebar();
   wireChrome();
+  const views = ['overview', 'stats', 'prompts', 'about'];
+  if (!DATA.config.demo) views.push('setup');
   const hashView = location.hash.slice(1);
-  if (['overview', 'stats', 'prompts', 'setup', 'about'].includes(hashView)) setView(hashView);
+  if (views.includes(hashView)) setView(hashView);
   else render();
   requestAnimationFrame(() => render()); // re-measure once layout has settled
   // reflect an already-running job in the Setup tab dot from anywhere
-  fetch('/api/job').then((r) => r.json()).then((j) => {
+  fetch('api/job').then((r) => r.json()).then((j) => {
     if (j && j.running) { jobRunning = true; updateSetupDot(); }
   }).catch(() => {});
 }

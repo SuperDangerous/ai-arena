@@ -6,6 +6,9 @@ prices, grades prompt craft with a local AI against a shared [rubric](RUBRIC.md)
 and profiles how each person actually drives their agents — then gives the team a
 dashboard to compare styles, steal techniques, and copy each other's best prompts.
 
+**[Try the live demo →](https://superdangerous.net/demos/ai-arena/)** — the full
+dashboard with two synthetic teammates, read-only, nothing to install.
+
 ![AI Arena dashboard](docs/screenshot.png)
 
 ## The question it answers
@@ -42,7 +45,8 @@ node arena.js serve
 ```
 
 That's it — everything else happens in the dashboard, which opens with two demo
-teammates so you can explore before adding your own data. Head to the **Setup**
+teammates so you can explore before adding your own data (the same pair as the
+[hosted demo](https://superdangerous.net/demos/ai-arena/)). Head to the **Setup**
 tab and work top to bottom:
 
 ![Setup tab](docs/setup.png)

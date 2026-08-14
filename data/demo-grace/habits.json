@@ -1,0 +1,83 @@
+{
+ "schema": 1,
+ "generatedAt": "2026-08-14T12:32:12.950Z",
+ "grader": "codex",
+ "sessionsSampled": 58,
+ "promptsSampled": 517,
+ "budgetChars": 181000,
+ "summary": "Grace writes short, dense asks that define \"done\" before any work starts — usually a countable condition plus a doc note, so the fix teaches the codebase something. She refuses the easy workaround by name (no retry bumps, no buffer-it-in-memory) and makes the agent root-cause instead. Research requests come with an output format and bounded depth, which turns \"look into it\" into a deliverable. Threads stay short: one task per session, re-briefed cheaply, with a quick nudge the moment the agent drifts from the constraint that matters.",
+ "traits": [
+  {
+   "title": "Defines \"done\" before the work starts",
+   "kind": "standards",
+   "strength": 3,
+   "detail": "Tasks end with a countable condition, not a feeling — and often a one-line doc note so the lesson sticks.",
+   "evidence": [
+    {
+     "quote": "Done means: retries removed, suite green 20 consecutive runs (`npm run test:loop 20`), and a short note in TESTING.md about the timer rule."
+    }
+   ]
+  },
+  {
+   "title": "Root-causes instead of papering over",
+   "kind": "verification",
+   "strength": 3,
+   "detail": "Names the tempting workaround and forbids it, so the agent digs for the shared underlying cause.",
+   "evidence": [
+    {
+     "quote": "Root-cause each one instead of bumping retries — they share a leaked fake-timer pattern."
+    }
+   ]
+  },
+  {
+   "title": "Research asks carry an output format",
+   "kind": "scoping",
+   "strength": 2,
+   "detail": "Comparisons specify the columns, the sources and the decision they feed, which bounds the depth automatically.",
+   "evidence": [
+    {
+     "quote": "Output: a one-page table (throughput, replay, ops burden, our-stack fit) + your recommendation with the single strongest reason and the single biggest risk."
+    }
+   ]
+  },
+  {
+   "title": "States the constraint that will bite",
+   "kind": "standards",
+   "strength": 2,
+   "detail": "Acceptance criteria include the resource limit or scale that would otherwise surface in production.",
+   "evidence": [
+    {
+     "quote": "Accept: a 500k-row export completes without the node process exceeding 300MB RSS."
+    }
+   ]
+  },
+  {
+   "title": "One task, one session",
+   "kind": "session-management",
+   "strength": 2,
+   "detail": "Starts fresh per task instead of dragging stale context; short threads keep the model on the current constraint.",
+   "evidence": [
+    {
+     "quote": "new session for the export work — the flaky-test context doesn't apply here"
+    }
+   ]
+  }
+ ],
+ "templates": [
+  {
+   "title": "Say what done means",
+   "trait": "Defines \"done\" before the work starts",
+   "prompt": "<task> in <project> (search \"<marker>\" to find the spots). Root-cause instead of <the easy workaround>. Done means: <the workaround removed>, <suite> green <N> consecutive runs (`<command>`), and a short note in <doc> about <the rule>."
+  },
+  {
+   "title": "Research with a deliverable",
+   "trait": "Research asks carry an output format",
+   "prompt": "Before we pick <choice> for <project>: compare <option A> vs <option B> for our workload (<the numbers that matter>). Read the actual docs, not blog posts. Output: a one-page table (<columns>) + your recommendation with the single strongest reason and the single biggest risk."
+  },
+  {
+   "title": "Acceptance with a resource limit",
+   "trait": "States the constraint that will bite",
+   "prompt": "Add <feature> to <project>. Reuse <existing mechanism> so <it stays consistent>. <The perf approach — stream, don't buffer>. Accept: <the large case> completes without <process> exceeding <limit>."
+  }
+ ]
+}
