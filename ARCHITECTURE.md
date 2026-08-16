@@ -157,6 +157,13 @@ and ran ~1.45 points harsher. Default is therefore your CLI's strongest model.
 
 ## Server & dashboard
 
+The front end splits in two: `web/kit/` is a domain-neutral dashboard kit
+(design tokens, components, SVG charts, an app shell) with no knowledge of
+prompts or sessions, and `web/app.js` + `web/app.css` are Arena's own data
+aggregation, pages and furniture built on top of it. `web/kit/README.md`
+documents reusing the kit in another app; `web/kit/example.html` is a working
+dashboard in a different domain built only on the kit.
+
 `serve` is a dependency-free HTTP server: static `web/`, avatar images from
 `data/`, `GET /api/dataset` (all users + pricing + git status, 5s cache) and
 `POST /api/exemplar` (the Shared/Excluded toggle). The dashboard is vanilla ES

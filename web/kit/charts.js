@@ -1,8 +1,17 @@
-// Chart primitives — hand-rolled SVG per the dataviz mark specs:
-// thin marks, 4px rounded data-ends, 2px surface gaps, hairline grids,
-// crosshair + unified tooltip on timelines, per-mark tooltips elsewhere.
+/* ---------------------------------------------------------------------------
+   Chart primitives — hand-rolled SVG, no library, no build step.
+
+   House marks: thin marks, 4px rounded data-ends, 2px surface gaps between
+   stacked segments, hairline grids, crosshair + unified tooltip on timelines,
+   per-mark tooltips elsewhere. Colours always come from CSS tokens via css(),
+   so charts re-theme for free — but you MUST re-render on theme change,
+   because the values are read at draw time (the shell does this for you).
+
+   Every chart takes (container, options) and replaces the container's content.
+--------------------------------------------------------------------------- */
 const NS = 'http://www.w3.org/2000/svg';
 
+/** Read a CSS custom property off :root — e.g. css('--s1'). */
 export function css(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
@@ -15,18 +24,35 @@ export function svgEl(tag, attrs = {}, parent) {
 }
 
 // ---------- tooltip singleton ----------
-const tip = document.getElementById('tooltip');
+// Created on first use so a host page needs no tooltip markup of its own.
+let tip = null;
+function tipEl() {
+  if (!tip) {
+    tip = document.getElementById('tooltip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.id = 'tooltip';
+      tip.className = 'tooltip';
+      tip.hidden = true;
+      document.body.appendChild(tip);
+    }
+  }
+  return tip;
+}
+
+/** Show the shared tooltip at viewport coords, filled by build(node). */
 export function tipShow(build, x, y) {
-  tip.replaceChildren();
-  build(tip);
-  tip.hidden = false;
-  const r = tip.getBoundingClientRect();
+  const t = tipEl();
+  t.replaceChildren();
+  build(t);
+  t.hidden = false;
+  const r = t.getBoundingClientRect();
   let tx = x + 14, ty = y + 12;
   if (tx + r.width > innerWidth - 8) tx = x - r.width - 14;
   if (ty + r.height > innerHeight - 8) ty = y - r.height - 12;
-  tip.style.left = tx + 'px'; tip.style.top = ty + 'px';
+  t.style.left = tx + 'px'; t.style.top = ty + 'px';
 }
-export function tipHide() { tip.hidden = true; }
+export function tipHide() { tipEl().hidden = true; }
 
 export function ttTitle(parent, text) {
   const d = document.createElement('div');
@@ -40,7 +66,8 @@ export function ttRow(parent, { color, label, value }) {
   parent.appendChild(row);
 }
 
-// ---------- scales & ticks ----------
+// ---------- scales & colour ----------
+/** Round an axis maximum up to a human number (1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10 × 10ⁿ). */
 function niceMax(v) {
   if (v <= 0) return 1;
   const p = Math.pow(10, Math.floor(Math.log10(v)));
@@ -52,6 +79,13 @@ function hexLerp(a, b, t) {
   const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
   const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
   return '#' + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+
+/** The categorical ramp, in order. seriesColors(3) → ['#…s1','#…s2','#…s3'] */
+export function seriesColors(n) {
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(css('--s' + ((i % 8) + 1)));
+  return out;
 }
 
 // ---------- legend ----------
@@ -68,15 +102,24 @@ export function legend(container, series, kind = 'sw') {
   container.appendChild(lg);
 }
 
-// ---------- timeline: stacked columns ≤92 pts / stacked areas, or multi-line ----------
-export function timeline(container, { days, series, fmtVal, height = 210, mode = 'stack' }) {
+/**
+ * Timeline over dated buckets. Picks its own mark by density and mode:
+ *   mode 'stack' (default) → stacked columns up to 92 buckets, stacked areas beyond
+ *   mode 'lines'           → one line per series, dot on the latest value
+ *
+ * days:   [{ d: 'YYYY-MM-DD', values: { seriesKey: number } }]
+ * series: [{ key, label, color }]
+ * fmtVal: (v, isAxis) => string
+ * xFmt:   optional (isoDate, totalBuckets) => string  — default DD/MM, MM/YYYY over 300
+ */
+export function timeline(container, { days, series, fmtVal, height = 210, mode = 'stack', xFmt, emptyText = 'No data in this window' }) {
   container.replaceChildren();
   const W = Math.max(320, container.clientWidth || 600);
   const H = height, padL = 44, padR = 8, padT = 10, padB = 22;
   const iw = W - padL - padR, ih = H - padT - padB;
-  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, style: 'display:block;max-width:100%', class: 'chart' }, container);
   const n = days.length;
-  if (!n) { container.replaceChildren(Object.assign(document.createElement('div'), { className: 'empty', textContent: 'No data in this window' })); return; }
+  if (!n) { container.replaceChildren(Object.assign(document.createElement('div'), { className: 'empty', textContent: emptyText })); return; }
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, style: 'display:block;max-width:100%', class: 'chart' }, container);
 
   const totals = days.map((d) => series.reduce((a, s) => a + (d.values[s.key] || 0), 0));
   const maxSingle = Math.max(...days.flatMap((d) => series.map((s) => d.values[s.key] || 0)), 1e-9);
@@ -90,12 +133,11 @@ export function timeline(container, { days, series, fmtVal, height = 210, mode =
     svgEl('line', { x1: padL, x2: W - padR, y1: y(v), y2: y(v), stroke: css('--grid'), 'stroke-width': 1 }, svg);
     svgEl('text', { x: padL - 6, y: y(v) + 3.5, 'text-anchor': 'end', class: 'axis-lbl' }, svg).textContent = fmtVal(v, true);
   }
-  // x labels (~6): DD/MM, or MM/YYYY on long spans (en-IE ordering)
+  // ~6 x labels
+  const fmtX = xFmt || ((d, total) => total > 300 ? `${d.slice(5, 7)}/${d.slice(0, 4)}` : `${d.slice(8, 10)}/${d.slice(5, 7)}`);
   const step = Math.max(1, Math.round(n / 6));
   for (let i = 0; i < n; i += step) {
-    const d = days[i].d;
-    svgEl('text', { x: x(i), y: H - 6, 'text-anchor': 'middle', class: 'axis-lbl' }, svg).textContent =
-      n > 300 ? `${d.slice(5, 7)}/${d.slice(0, 4)}` : `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+    svgEl('text', { x: x(i), y: H - 6, 'text-anchor': 'middle', class: 'axis-lbl' }, svg).textContent = fmtX(days[i].d, n);
   }
 
   const surface = css('--surface');
@@ -117,10 +159,10 @@ export function timeline(container, { days, series, fmtVal, height = 210, mode =
       const segs = series.map((s) => ({ s, v: d.values[s.key] || 0 })).filter((o) => o.v > 0);
       segs.forEach((o, si) => {
         const y1 = y(acc + o.v), y0 = y(acc);
-        const h = Math.max(0, y0 - y1 - (si < segs.length - 1 ? 2 : 0)); // 2px surface gap between segments
+        const h = Math.max(0, y0 - y1 - (si < segs.length - 1 ? 2 : 0)); // 2px gap between segments
         const top = si === segs.length - 1;
         const r = top ? Math.min(4, bw / 2, h) : 0;
-        const xx = x(i) - bw / 2, yy = y0 - h - (si < segs.length - 1 ? 0 : 0);
+        const xx = x(i) - bw / 2;
         const path = top && r > 0
           ? `M${xx},${y0} L${xx},${y1 + r} Q${xx},${y1} ${xx + r},${y1} L${xx + bw - r},${y1} Q${xx + bw},${y1} ${xx + bw},${y1 + r} L${xx + bw},${y0} Z`
           : null;
@@ -130,7 +172,7 @@ export function timeline(container, { days, series, fmtVal, height = 210, mode =
       });
     });
   } else {
-    // stacked areas: series hue wash + 2px line on top of each band
+    // stacked areas: hue wash + 2px line on top of each band
     let base = days.map(() => 0);
     for (const s of series) {
       const top = days.map((d, i) => base[i] + (d.values[s.key] || 0));
@@ -145,7 +187,7 @@ export function timeline(container, { days, series, fmtVal, height = 210, mode =
   }
   svgEl('line', { x1: padL, x2: W - padR, y1: y(0), y2: y(0), stroke: css('--baseline'), 'stroke-width': 1 }, svg);
 
-  // crosshair + unified tooltip
+  // crosshair + unified tooltip: one tooltip for the whole bucket, not per mark
   const hair = svgEl('line', { y1: padT, y2: padT + ih, stroke: css('--baseline'), 'stroke-width': 1, visibility: 'hidden' }, svg);
   const hit = svgEl('rect', { x: padL, y: padT, width: iw, height: ih, fill: 'transparent' }, svg);
   hit.addEventListener('pointermove', (ev) => {
@@ -167,12 +209,15 @@ export function timeline(container, { days, series, fmtVal, height = 210, mode =
   legend(container, series);
 }
 
-// ---------- calendar heatmap ----------
-export function calendar(container, { byDay, weeks = 26, fmtVal, label = 'prompts' }) {
+/**
+ * Calendar heatmap — one cell per day, weeks as columns.
+ * byDay: { 'YYYY-MM-DD': number }
+ */
+export function calendar(container, { byDay, weeks = 26, fmtVal, label = 'value', locale = 'en-IE', endDate }) {
   container.replaceChildren();
   const cell = 13, gap = 3, padT = 16, padL = 26;
   const rows = 7;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const today = endDate ? new Date(endDate) : new Date(); today.setHours(0, 0, 0, 0);
   const end = new Date(today);
   const start = new Date(end.getTime() - (weeks * 7 - 1) * 864e5);
   start.setDate(start.getDate() - start.getDay()); // align to Sunday
@@ -197,25 +242,29 @@ export function calendar(container, { byDay, weeks = 26, fmtVal, label = 'prompt
     const xx = padL + wk * (cell + gap), yy = padT + dow * (cell + gap);
     if (d.getMonth() !== lastMonth && dow === 0) {
       lastMonth = d.getMonth();
-      svgEl('text', { x: xx, y: 10, class: 'axis-lbl' }, svg).textContent = d.toLocaleString('en', { month: 'short' });
+      svgEl('text', { x: xx, y: 10, class: 'axis-lbl' }, svg).textContent = d.toLocaleString(locale, { month: 'short' });
     }
-    const fill = v === 0 ? css('--surface-2') : hexLerp(lo, hi, Math.pow(v / max, 0.55));
+    // gamma 0.55 so mid-range days stay distinguishable from the peak
+    const fill = v === 0 || max === 0 ? css('--surface-2') : hexLerp(lo, hi, Math.pow(v / max, 0.55));
     const r = svgEl('rect', { x: xx, y: yy, width: cell, height: cell, rx: 3.5, fill }, svg);
     r.addEventListener('pointermove', (ev) => tipShow((t) => {
-      ttTitle(t, d.toLocaleDateString('en-IE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }));
+      ttTitle(t, d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }));
       ttRow(t, { label, value: fmtVal(v) });
     }, ev.clientX, ev.clientY));
     r.addEventListener('pointerleave', tipHide);
   }
 }
 
-// ---------- horizontal bars ----------
-export function hbars(container, { rows, fmtVal, height, maxRows = 8, tooltip }) {
+/**
+ * Horizontal bars, sorted by the caller. Rolls the tail into "Other (n)".
+ * rows: [{ label, value, color, ...anything your tooltip needs }]
+ */
+export function hbars(container, { rows, fmtVal, height, maxRows = 8, tooltip, otherLabel = 'Other' }) {
   container.replaceChildren();
   const shown = rows.slice(0, maxRows);
   if (rows.length > maxRows) {
     const rest = rows.slice(maxRows);
-    shown.push({ label: `Other (${rest.length})`, value: rest.reduce((a, r) => a + r.value, 0), color: css('--muted'), _other: true });
+    shown.push({ label: `${otherLabel} (${rest.length})`, value: rest.reduce((a, r) => a + r.value, 0), color: css('--muted'), _other: true });
   }
   const rowH = 30, padL = 8, padR = 60, labelW = Math.min(180, Math.max(90, (container.clientWidth || 500) * 0.3));
   const W = Math.max(320, container.clientWidth || 500);
@@ -244,17 +293,20 @@ export function hbars(container, { rows, fmtVal, height, maxRows = 8, tooltip })
   });
 }
 
-// ---------- 24h columns ----------
-export function hours24(container, { hours, fmtVal, height = 130 }) {
+/**
+ * Fixed 24-column profile — "when in the day does this happen".
+ * values: number[24]. Peak column is full opacity and labelled.
+ */
+export function hours24(container, { values, fmtVal, height = 130, label = 'value' }) {
   container.replaceChildren();
   const W = Math.max(320, container.clientWidth || 500), H = height, padL = 8, padB = 18, padT = 14;
   const iw = W - padL * 2, ih = H - padB - padT;
   const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, style: 'display:block;max-width:100%', class: 'chart' }, container);
-  const maxV = Math.max(...hours, 1e-9);
+  const maxV = Math.max(...values, 1e-9);
   const bw = Math.min(24, iw / 24 - 2);
-  const peak = hours.indexOf(maxV);
+  const peak = values.indexOf(maxV);
   const color = css('--s1');
-  hours.forEach((v, h) => {
+  values.forEach((v, h) => {
     const xx = padL + h * (iw / 24) + (iw / 24 - bw) / 2;
     const bh = Math.max(v > 0 ? 2 : 0.5, (v / maxV) * ih);
     const yy = padT + ih - bh;
@@ -267,7 +319,7 @@ export function hours24(container, { hours, fmtVal, height = 130 }) {
     const hit = svgEl('rect', { x: padL + h * (iw / 24), y: 0, width: iw / 24, height: H, fill: 'transparent' }, svg);
     hit.addEventListener('pointermove', (ev) => tipShow((t) => {
       ttTitle(t, `${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00`);
-      ttRow(t, { label: 'prompts', value: fmtVal(v) });
+      ttRow(t, { label, value: fmtVal(v) });
     }, ev.clientX, ev.clientY));
     hit.addEventListener('pointerleave', tipHide);
   });
@@ -277,45 +329,53 @@ export function hours24(container, { hours, fmtVal, height = 130 }) {
   }
 }
 
-// ---------- dot plot (categories × users) ----------
-export function dotplot(container, { cats, users, height, max = 10, fmtTick = String, fmtVal }) {
+/**
+ * Dot plot — compare several series across the same categories on one scale.
+ * Better than grouped bars when you want "who is highest on each row".
+ *
+ * rows:   [{ label, values: { seriesKey: number } }]
+ * series: [{ key, name, color }]
+ */
+export function dotplot(container, { rows, series, height, max = 10, fmtTick = String, fmtVal }) {
   container.replaceChildren();
   const rowH = 34, padL = 110, padR = 24, padT = 18, padB = 6;
   const W = Math.max(320, container.clientWidth || 500);
-  const H = height || cats.length * rowH + padT + padB;
+  const H = height || rows.length * rowH + padT + padB;
   const iw = W - padL - padR;
   const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, style: 'display:block;max-width:100%', class: 'chart' }, container);
   const x = (v) => padL + (v / max) * iw;
-  fmtVal = fmtVal || ((v, c, u) => `${v.toFixed(1)} / ${max}`);
+  fmtVal = fmtVal || ((v) => `${v.toFixed(1)} / ${max}`);
   for (const g of [0, max / 4, max / 2, (3 * max) / 4, max]) {
     svgEl('line', { x1: x(g), x2: x(g), y1: padT - 4, y2: H - padB, stroke: css('--grid'), 'stroke-width': 1 }, svg);
     svgEl('text', { x: x(g), y: 10, 'text-anchor': 'middle', class: 'axis-lbl' }, svg).textContent = fmtTick(g);
   }
   const surface = css('--surface');
-  cats.forEach((c, i) => {
+  rows.forEach((c, i) => {
     const yy = padT + i * rowH + rowH / 2;
     svgEl('text', { x: padL - 10, y: yy + 3.5, 'text-anchor': 'end', class: 'axis-lbl', style: 'font-size:11.5px' }, svg).textContent = c.label;
     svgEl('line', { x1: padL, x2: W - padR, y1: yy, y2: yy, stroke: css('--grid'), 'stroke-width': 1 }, svg);
-    for (const u of users) {
-      const v = c.scores[u.slug];
+    for (const s of series) {
+      const v = c.values[s.key];
       if (v == null) continue;
       const vc = Math.min(v, max);
-      svgEl('circle', { cx: x(vc), cy: yy, r: 6, fill: u.color, stroke: surface, 'stroke-width': 2 }, svg);
+      svgEl('circle', { cx: x(vc), cy: yy, r: 6, fill: s.color, stroke: surface, 'stroke-width': 2 }, svg);
       const hit = svgEl('circle', { cx: x(vc), cy: yy, r: 13, fill: 'transparent' }, svg);
       hit.addEventListener('pointermove', (ev) => tipShow((t) => {
         ttTitle(t, c.label);
-        ttRow(t, { color: u.color, label: u.name, value: fmtVal(v, c, u) });
+        ttRow(t, { color: s.color, label: s.name, value: fmtVal(v, c, s) });
       }, ev.clientX, ev.clientY));
       hit.addEventListener('pointerleave', tipHide);
     }
   });
-  legend(container, users.map((u) => ({ label: u.name, color: u.color })));
+  legend(container, series.map((s) => ({ label: s.name, color: s.color })));
 }
 
-// ---------- sparkline ----------
-// stretch: fill the container width and pin flush to its bottom edge
-// (non-scaling strokes keep the line crisp under the horizontal stretch)
+/**
+ * Sparkline. stretch:true fills the container width and pins flush to the
+ * bottom edge — that is the variant the stat tile uses.
+ */
 export function sparkline(container, { values, color, w = 130, h = 30, stretch = false }) {
+  if (!values || values.length < 2) return;
   const attrs = { viewBox: `0 0 ${w} ${h}`, width: w, height: h };
   if (stretch) { attrs.width = '100%'; attrs.preserveAspectRatio = 'none'; attrs.class = 'spark'; }
   const svg = svgEl('svg', attrs, container);
@@ -325,21 +385,8 @@ export function sparkline(container, { values, color, w = 130, h = 30, stretch =
   let d = `M${x(0)},${y(values[0])}`;
   for (let i = 1; i < values.length; i++) d += ` L${x(i)},${y(values[i])}`;
   svgEl('path', { d: `${d} L${x(values.length - 1)},${h} L${x(0)},${h} Z`, fill: color, opacity: 0.12 }, svg);
+  // non-scaling strokes stay crisp under the horizontal stretch
   svgEl('path', { d, fill: 'none', stroke: color, 'stroke-width': 1.6, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'vector-effect': 'non-scaling-stroke' }, svg);
   const lastX = x(values.length - 1), lastY = y(values[values.length - 1]);
   svgEl('circle', { cx: lastX, cy: lastY, r: 2.4, fill: color, stroke: css('--surface'), 'stroke-width': 1.5, 'vector-effect': 'non-scaling-stroke' }, svg);
-}
-
-// ---------- score bars (single user, per category) ----------
-export function scoreBars(container, { cats, color, fmtVal }) {
-  hbars(container, {
-    rows: cats.map((c) => ({ label: c.label, value: c.avg, color, _n: c.n })),
-    fmtVal: (v) => v.toFixed(1),
-    maxRows: 10,
-    tooltip: (t, r) => {
-      ttTitle(t, r.label);
-      ttRow(t, { label: 'avg score', value: r.value.toFixed(2) + ' / 10' });
-      if (r._n) ttRow(t, { label: 'prompts graded', value: String(r._n) });
-    },
-  });
 }

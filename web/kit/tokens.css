@@ -1,0 +1,62 @@
+/* ---------------------------------------------------------------------------
+   Design tokens. Every component below references ROLES (--surface, --ink-2),
+   never raw hex — that is what makes one stylesheet work in both themes.
+
+   To rebrand: change the values here and nothing else. To add a theme, copy
+   the :root[data-theme="dark"] block and redefine the same names.
+
+   Series colours --s1..--s8 are a categorical ramp: distinguishable in both
+   themes, colour-blind safe in the first four, and used in that order.
+--------------------------------------------------------------------------- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f3f2ee;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+  /* sequential ramp for heatmaps: low → high */
+  --seq-lo: #cde2fb; --seq-hi: #0d366b;
+  --good: #006300;
+  --warn: #fab219;
+  --bad: #c03030;
+  --shadow: 0 1px 2px rgba(11,11,11,.04), 0 4px 16px rgba(11,11,11,.05);
+  --radius: 14px;
+  --content-max: 1240px;
+  --sidebar-w: 176px;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #232322;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --seq-lo: #16324f; --seq-hi: #9ec5f4;
+  --good: #0ca30c;
+  --bad: #e06c6c;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+}
+
+html { font-size: 15px; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--page);
+  color: var(--ink);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}

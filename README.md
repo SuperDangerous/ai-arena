@@ -143,6 +143,8 @@ injected-context guards, dedupe claims — real logs are messy).
 arena.js          CLI entry
 lib/              parsers, pricing, grading, habits, server, store
 web/              the dashboard (vanilla JS + hand-rolled SVG, no build step)
+web/kit/          reusable dashboard kit — tokens, components, charts, shell
+                  (domain-neutral; see web/kit/README.md to reuse it elsewhere)
 pricing.json      editable price + energy factors
 RUBRIC.md         the grading rubric
 ARCHITECTURE.md   internals

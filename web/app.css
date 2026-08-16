@@ -1,0 +1,118 @@
+/* ---------------------------------------------------------------------------
+   AI Arena — app-specific styles.
+
+   Anything domain-neutral lives in kit/ (tokens.css + kit.css). What's left
+   here is Arena's own furniture: the prism wordmark, tool icons, prompt
+   cards, habit profiles and the setup pipeline. A different app on this kit
+   replaces THIS file and keeps kit/ untouched.
+--------------------------------------------------------------------------- */
+
+/* prism wordmark */
+.brand { width: 176px; }
+.brand-mark .bm-txt { fill: var(--ink); font-family: inherit; font-size: 16.5px; font-weight: 750; }
+
+/* source marks are opposite-polarity (light vs dark plate) — invert one per
+   theme so both tools always read with the same polarity */
+.tico { display: inline-block; border-radius: 4px; flex: none; }
+:root[data-theme="dark"] .tico-claude { filter: invert(1) hue-rotate(180deg); }
+:root:not([data-theme="dark"]) .tico-codex { filter: invert(1) hue-rotate(180deg); }
+.key { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.key-claude { background: var(--claude); }
+.key-codex { background: var(--codex); }
+
+/* the two tool accents ride on the token palette */
+:root { --claude: #eb6834; --codex: #2a78d6; }
+:root[data-theme="dark"] { --claude: #d95926; --codex: #3987e5; }
+
+/* prompt cards — one rigid anatomy so every card reads identically:
+   [score | category | date] / [who · where] / text / note / tags / copy.
+   The Prompts page is a single wide column for comfortable inspection;
+   .pcards.grid3 is the compact multi-column variant used in previews. */
+.pcards { display: grid; grid-template-columns: 1fr; gap: 16px; width: 100%; align-items: stretch; }
+.pcards.grid3 { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); max-width: none; gap: 14px; }
+.pcards.grid3 .p-text { height: 220px; font-size: 12px; }
+.pcard { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; }
+.pcard.p-off { opacity: .55; }
+.pcard .p-head { display: flex; align-items: center; gap: 9px; }
+.p-score {
+  font-weight: 700; font-size: 12.5px; border-radius: 7px; padding: 2px 0; width: 46px; text-align: center;
+  flex: none; background: var(--surface-2); border: 1px solid var(--border); font-variant-numeric: tabular-nums;
+}
+.p-score.s8 { color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, var(--border)); }
+.p-cat { font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); }
+.p-date { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.p-who { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); min-height: 26px; }
+.p-who .sep { color: var(--muted); }
+.p-actions { margin-left: auto; display: inline-flex; gap: 7px; }
+.p-text {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; line-height: 1.65;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+  white-space: pre-wrap; overflow-wrap: break-word; max-height: 480px; overflow-y: auto; color: var(--ink); flex: none;
+}
+.p-note { font-size: 13px; color: var(--ink-2); }
+.p-note b { color: var(--ink); }
+.p-foot { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: auto; }
+.p-foot .copy-btn { margin-left: auto; }
+
+/* publish review rows */
+.pubrow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
+.pubrow:last-child { border-bottom: 0; }
+.pubrow .p-score { font-size: 11.5px; width: 40px; }
+.pubrow .pr-cat { font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); width: 90px; flex: none; }
+.pubrow .pr-text { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.pub-ok { color: var(--good); font-weight: 650; }
+
+/* habits — technique profiles */
+.habit-summary { font-size: 14px; color: var(--ink); line-height: 1.6; margin: 4px 0 14px; max-width: 760px; }
+.habit { padding: 10px 0; border-top: 1px solid var(--grid); }
+.habit-head { display: flex; align-items: center; gap: 9px; font-size: 13.5px; }
+.habit-str { color: var(--s1); font-size: 11px; letter-spacing: 1px; flex: none; }
+.habit-detail { font-size: 13px; color: var(--ink-2); margin: 4px 0 2px 0; line-height: 1.55; max-width: 760px; }
+.habit-quote {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; color: var(--muted);
+  margin-top: 5px; padding-left: 10px; border-left: 2px solid var(--grid); line-height: 1.5;
+}
+.pb-row { display: flex; gap: 18px; padding: 14px 0; border-top: 1px solid var(--grid); align-items: flex-start; }
+.pb-who { display: flex; align-items: center; gap: 9px; border: 0; background: none; font: inherit; color: var(--ink); cursor: pointer; flex: none; width: 150px; text-align: left; padding: 0; }
+.pb-who:hover b { text-decoration: underline; }
+.pb-body { min-width: 0; flex: 1; }
+.pb-summary { font-size: 13px; color: var(--ink-2); line-height: 1.65; margin-bottom: 12px; max-width: 900px; }
+.pb-traits { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 5px 24px; }
+.pb-trait { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; color: var(--ink); }
+.pb-trait .habit-str { flex: none; }
+.pb-detail { margin-top: 6px; }
+
+/* copyable style templates */
+.tmpl-head { font-size: 13px; color: var(--ink-2); margin: 16px 0 4px; }
+.tmpl-head b { color: var(--ink); }
+.tmpl { margin-top: 14px; }
+.tmpl:first-child { margin-top: 2px; }
+.tmpl.p-off { opacity: .55; }
+.tmpl-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 650; color: var(--ink); margin-bottom: 6px; }
+.tmpl-lead { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.tmpl-meta { color: var(--ink-2); font-weight: 550; }
+.tmpl-body {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; line-height: 1.6;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; color: var(--ink); white-space: pre-wrap; overflow-wrap: break-word;
+}
+.tmpl-body.scroll { max-height: 420px; overflow-y: auto; }
+
+/* setup pipeline extras */
+.about-steps { margin-top: 6px; }
+.about-steps .step-note { max-width: none; font-size: 13px; color: var(--ink-2); line-height: 1.65; }
+.about-steps .step-title { font-size: 14.5px; }
+.est { font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.est b { color: var(--ink); }
+.setup-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.codeblock {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; line-height: 1.8;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 16px; color: var(--ink); white-space: pre; overflow-x: auto; margin-top: 8px;
+}
+.codeblock .cmt { color: var(--muted); }
+
+/* read-only hosted demo */
+.pill.demo { padding: 3px 12px; }
+a.icon-btn.gh { background: linear-gradient(120deg, #1c5cab, #3987e5 55%, #22d3ee); color: #fff; border: 0; font-weight: 650; }
+a.icon-btn.gh:hover { filter: brightness(1.1); color: #fff; }

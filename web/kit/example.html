@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kit example — Ledger</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+/* ---------------------------------------------------------------------------
+   A complete dashboard on the kit, in a different domain to the app that ships
+   it: small-business revenue and expenses. ~150 lines, no build step.
+
+   Copy this file as the starting point for a new dashboard: replace loadData()
+   with your own source and rewrite the two page renderers. Everything else —
+   chrome, nav, sidebar, theme, tooltips, charts — comes from the kit.
+--------------------------------------------------------------------------- */
+import { createApp } from './shell.js';
+import { el, card, chartDiv, tiles, tile, table, entityCell, insight, headerSeg } from './dom.js';
+import { makeFormat, dayKey } from './format.js';
+import * as C from './charts.js';
+
+const fmt = makeFormat({ locale: 'en-IE', currency: 'EUR' });
+
+// ---- data (synthetic but deterministic; swap for your own fetch) ----
+const STREAMS = [
+  { key: 'subscriptions', label: 'Subscriptions', kind: 'in', base: 900 },
+  { key: 'services', label: 'Services', kind: 'in', base: 500 },
+  { key: 'payroll', label: 'Payroll', kind: 'out', base: 700 },
+  { key: 'cloud', label: 'Cloud', kind: 'out', base: 220 },
+  { key: 'tools', label: 'Tools', kind: 'out', base: 90 },
+];
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function loadData() {
+  const rng = mulberry32(20260816);
+  const days = [];
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 864e5);
+    const weekend = d.getDay() === 0 || d.getDay() === 6;
+    const values = {};
+    for (const s of STREAMS) {
+      const seasonal = 1 + 0.35 * Math.sin(i / 9);
+      values[s.key] = Math.round(s.base * seasonal * (weekend ? 0.25 : 1) * (0.6 + rng() * 0.9));
+    }
+    days.push({ d: dayKey(d), values });
+  }
+  return { days, streams: STREAMS };
+}
+
+const sum = (days, keys, pick = (v) => v) =>
+  days.reduce((a, day) => a + keys.reduce((b, k) => b + pick(day.values[k] || 0), 0), 0);
+const inKeys = STREAMS.filter((s) => s.kind === 'in').map((s) => s.key);
+const outKeys = STREAMS.filter((s) => s.kind === 'out').map((s) => s.key);
+
+/** Filter the dataset down to the sidebar's current selections. */
+function scoped(ctx) {
+  const { data, state } = ctx;
+  const days = state.period > 0 ? data.days.slice(-state.period) : data.days;
+  const streams = data.streams.filter((s) => state.stream === 'all' || s.key === state.stream);
+  return { days, streams };
+}
+
+// ---- pages ----
+function renderOverview(view, ctx) {
+  const { days, streams } = scoped(ctx);
+  const colors = C.seriesColors(STREAMS.length);
+  const colorOf = (k) => colors[STREAMS.findIndex((s) => s.key === k)];
+
+  const revenue = sum(days, inKeys.filter((k) => streams.some((s) => s.key === k)));
+  const costs = sum(days, outKeys.filter((k) => streams.some((s) => s.key === k)));
+  const margin = revenue ? (revenue - costs) / revenue : 0;
+  const dailyNet = days.map((d) => inKeys.reduce((a, k) => a + (d.values[k] || 0), 0));
+
+  view.appendChild(tiles([
+    tile('Revenue', fmt.money(revenue, true), { spark: dailyNet, info: 'Gross income across the selected streams and period.' }),
+    tile('Costs', fmt.money(costs, true), { info: 'Everything classed as an outgoing: payroll, cloud, tools.' }),
+    tile('Net', fmt.money(revenue - costs, true), { info: 'Revenue minus costs — the number the business actually keeps.' }),
+    tile('Margin', fmt.pct(margin), { info: 'Net as a share of revenue.' }),
+  ]));
+
+  // stacked timeline; the kit switches to areas automatically beyond 92 buckets
+  const tl = card('Cash flow by stream', 'Daily totals per stream. Hover for the full breakdown of any day.');
+  ctx.state.mode = ctx.state.mode || 'stack';
+  headerSeg(tl, [{ value: 'stack', label: 'Stacked' }, { value: 'lines', label: 'Lines' }],
+    ctx.state.mode, (v) => { ctx.state.mode = v; ctx.app.render(); });
+  C.timeline(chartDiv(tl), {
+    days,
+    series: streams.map((s) => ({ key: s.key, label: s.label, color: colorOf(s.key) })),
+    fmtVal: (v, axis) => fmt.money(v, axis),
+    mode: ctx.state.mode,
+  });
+  view.appendChild(tl);
+
+  const g2 = el('div', 'grid g2');
+  const byStream = card('Totals by stream', 'Where the money came from and went over the period.');
+  C.hbars(chartDiv(byStream), {
+    rows: streams.map((s) => ({ label: s.label, value: sum(days, [s.key]), color: colorOf(s.key), kind: s.kind }))
+      .sort((a, b) => b.value - a.value),
+    fmtVal: (v) => fmt.money(v, true),
+    tooltip: (t, r) => {
+      C.ttTitle(t, r.label);
+      C.ttRow(t, { label: r.kind === 'in' ? 'revenue' : 'cost', value: fmt.money(r.value) });
+      C.ttRow(t, { label: 'daily average', value: fmt.money(r.value / days.length) });
+    },
+  });
+  g2.appendChild(byStream);
+
+  const cal = card('Trading calendar', 'Net revenue per day — darker is a bigger day. Weekends stay pale by design.');
+  const byDay = {};
+  days.forEach((d, i) => { byDay[d.d] = dailyNet[i]; });
+  C.calendar(chartDiv(cal), { byDay, weeks: Math.ceil(days.length / 7), fmtVal: (v) => fmt.money(v), label: 'revenue' });
+  g2.appendChild(cal);
+  view.appendChild(g2);
+
+  const best = days.reduce((a, b, i) => (dailyNet[i] > a.v ? { d: b.d, v: dailyNet[i] } : a), { d: '', v: 0 });
+  const ins = card('Notes', 'Findings a reader would otherwise have to compute themselves.');
+  const wrap = el('div', 'insights');
+  wrap.appendChild(insight(fmt.money(best.v), `was the best single day (${fmt.date(best.d)}).`));
+  wrap.appendChild(insight(fmt.pct(margin), 'margin over the period, on ' + fmt.money(revenue / days.length) + ' revenue per day.'));
+  ins.appendChild(wrap);
+  view.appendChild(ins);
+}
+
+function renderDetail(view, ctx) {
+  const { days, streams } = scoped(ctx);
+  const colors = C.seriesColors(STREAMS.length);
+  const rows = streams.map((s, i) => {
+    const total = sum(days, [s.key]);
+    return {
+      name: entityCell(s.label, colors[STREAMS.findIndex((x) => x.key === s.key)]),
+      kind: s.kind === 'in' ? 'Revenue' : 'Cost',
+      total, avg: total / days.length,
+      share: total / Math.max(1, sum(days, streams.map((x) => x.key))),
+    };
+  }).sort((a, b) => b.total - a.total);
+
+  const c = card('Streams', 'One row per stream over the selected period.');
+  c.appendChild(table([
+    { key: 'name', label: 'Stream' },
+    { key: 'kind', label: 'Type' },
+    { key: 'total', label: 'Total', num: true, fmt: (v) => fmt.money(v), bar: () => C.css('--s1') },
+    { key: 'avg', label: 'Per day', num: true, fmt: (v) => fmt.money(v) },
+    { key: 'share', label: 'Share', num: true, fmt: (v) => fmt.pct(v) },
+  ], rows));
+  view.appendChild(c);
+
+  const hrs = card('Hour of day', 'When transactions land — the peak hour is labelled.');
+  const profile = new Array(24).fill(0).map((_, h) => Math.round(Math.max(0, 60 * Math.sin((h - 6) / 24 * Math.PI)) * (1 + (h % 3) / 4)));
+  C.hours24(chartDiv(hrs), { values: profile, fmtVal: fmt.num, label: 'transactions' });
+  view.appendChild(hrs);
+}
+
+// ---- the app ----
+createApp({
+  title: 'Ledger',
+  brand: { text: 'Ledger' },
+  state: { period: 30, stream: 'all' },
+  load: loadData,
+  pages: [
+    { id: 'overview', label: 'Overview', render: renderOverview },
+    { id: 'detail', label: 'Detail', render: renderDetail },
+  ],
+  sidebar: ({ state, app, group, row, select }) => {
+    const p = group('Period');
+    p.appendChild(select(
+      [{ value: 30, label: 'Last 30 days' }, { value: 60, label: 'Last 60 days' }, { value: 0, label: 'All time' }],
+      state.period, (v) => { state.period = Number(v); app.render(); }));
+    const s = group('Stream');
+    row(s, { label: 'All streams', active: state.stream === 'all', onPick: () => { state.stream = 'all'; app.buildSidebar(); app.render(); } });
+    const colors = C.seriesColors(STREAMS.length);
+    STREAMS.forEach((st, i) => row(s, {
+      label: st.label, active: state.stream === st.key, dotColor: colors[i],
+      onPick: () => { state.stream = st.key; app.buildSidebar(); app.render(); },
+    }));
+  },
+  footer: ({ data }) => ({
+    left: 'Example dashboard — synthetic data, generated in the browser.',
+    right: `${data.days.length} days · ${data.streams.length} streams`,
+  }),
+  help: {
+    label: 'About',
+    title: 'This is a kit demo',
+    body: [
+      'Every pixel here comes from web/kit/ — the same tokens, components and charts the AI Arena dashboard uses.',
+      'The only app-specific code is this file: a data loader and two page renderers.',
+    ],
+  },
+  actions: [{ label: 'Kit README ↗', href: 'README.md' }],
+});
+</script>
+</body>
+</html>

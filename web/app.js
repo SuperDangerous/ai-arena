@@ -1,4 +1,9 @@
-import * as C from './charts.js';
+import * as C from './kit/charts.js';
+import {
+  el, card, chartDiv, seg, headerSeg, tile, avatar, copyBtn,
+  filterGroup, filterRow, select as selectCtl,
+} from './kit/dom.js';
+import { makeFormat } from './kit/format.js';
 
 // ---------------- state ----------------
 // One global scope drives every page: 'all' (everyone) or a user slug.
@@ -25,28 +30,13 @@ const prefs = {
   currency: localStorage.getItem('arena-cur') || 'USD',
   fxEur: Number(localStorage.getItem('arena-fx')) || 0.86,
 };
-const fmt = {
-  usd: (v, compact) => {
-    const eur = prefs.currency === 'EUR';
-    const sym = eur ? '€' : '$';
-    if (eur) v = v * prefs.fxEur;
-    if (compact && v >= 1000) return sym + (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'k';
-    if (v >= 100) return sym + Math.round(v).toLocaleString('en-IE');
-    return sym + v.toFixed(2);
-  },
-  tok: (v) => {
-    if (v >= 1e9) return (v / 1e9).toFixed(2) + 'B';
-    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
-    if (v >= 1e3) return (v / 1e3).toFixed(1) + 'k';
-    return String(Math.round(v));
-  },
-  num: (v) => Math.round(v).toLocaleString('en-IE'),
-  pct: (v) => (v * 100).toFixed(0) + '%',
-  date: (iso) => {
-    const d = String(iso || '').slice(0, 10).split('-');
-    return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : (iso || '');
-  },
-};
+const F = makeFormat({
+  locale: 'en-IE',
+  currency: prefs.currency,
+  rate: prefs.currency === 'EUR' ? prefs.fxEur : 1,
+});
+// Arena's long-standing names, mapped onto the kit's formatters
+const fmt = { usd: F.money, tok: F.compact, num: F.num, pct: F.pct, date: F.date };
 const metricFmt = { usd: fmt.usd, tokens: fmt.tok, prompts: fmt.num };
 const metricLabel = { usd: 'API-equivalent cost', tokens: 'tokens', prompts: 'prompts' };
 
@@ -198,72 +188,8 @@ function catAvgs(u) {
   return out;
 }
 
-// ---------------- DOM helpers ----------------
+// ---------------- DOM ----------------
 const view = document.getElementById('view');
-function el(tag, cls, text) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text != null) e.textContent = text;
-  return e;
-}
-// info renders as a ? tooltip beside the title (keeps card surfaces clean);
-// visibleSub is for genuinely dynamic content that must stay on the surface
-function card(title, info, visibleSub) {
-  const c = el('div', 'card');
-  if (title) {
-    const h = el('h3');
-    h.appendChild(el('span', null, title));
-    if (info) {
-      const q = el('button', 'c-info', '?');
-      q.setAttribute('aria-label', 'What is this?');
-      const show = (ev) => C.tipShow((tt) => { C.ttTitle(tt, title); tt.appendChild(el('div', 'tt-body', info)); }, ev.clientX, ev.clientY);
-      q.addEventListener('pointerenter', show);
-      q.addEventListener('click', (ev) => { ev.stopPropagation(); show(ev); });
-      q.addEventListener('pointerleave', C.tipHide);
-      h.appendChild(q);
-    }
-    c.appendChild(h);
-  }
-  if (visibleSub) c.appendChild(el('div', 'sub', visibleSub));
-  return c;
-}
-function chartDiv(c) { const d = el('div', 'chart'); c.appendChild(d); return d; }
-function seg(options, active, onPick) {
-  const s = el('div', 'seg');
-  for (const o of options) {
-    const b = el('button', o.value === active ? 'active' : '');
-    if (o.dotColor) { const d = el('span', 'dot'); d.style.background = o.dotColor; b.appendChild(d); }
-    b.appendChild(el('span', null, o.label));
-    if (o.demo) b.appendChild(el('span', 'demo-tag', 'DEMO'));
-    b.addEventListener('click', () => onPick(o.value));
-    s.appendChild(b);
-  }
-  return s;
-}
-function headerSeg(cardEl, options, active, onPick) {
-  const s = seg(options, active, onPick);
-  cardEl.insertBefore(s, cardEl.firstChild);
-  s.style.cssText = 'float:right;margin-top:-2px';
-}
-function tile(label, value, { hero, delta, spark, sparkColor, info } = {}) {
-  const hasSpark = spark && spark.length > 1;
-  // values centre themselves (above the sparkline when there is one)
-  const t = el('div', 'tile' + (!delta ? ' t-center' : '') + (hasSpark ? ' t-spark' : ''));
-  t.appendChild(el('div', 't-label', label));
-  t.appendChild(el('div', 't-value' + (hero ? ' hero' : ''), value));
-  if (delta) t.appendChild(el('div', 't-delta', delta));
-  if (hasSpark) C.sparkline(t, { values: spark, color: sparkColor || C.css('--s1'), stretch: true });
-  if (info) {
-    const q = el('button', 't-info', '?');
-    q.setAttribute('aria-label', 'What is this?');
-    const show = (ev) => C.tipShow((tt) => { C.ttTitle(tt, label); tt.appendChild(el('div', 'tt-body', info)); }, ev.clientX, ev.clientY);
-    q.addEventListener('pointerenter', show);
-    q.addEventListener('click', show);
-    q.addEventListener('pointerleave', C.tipHide);
-    t.appendChild(q);
-  }
-  return t;
-}
 
 // real money not spent because input came from cache instead of fresh
 function cacheSavings(models) {
@@ -285,22 +211,26 @@ function fmtEnergy(wh) {
   if (wh >= 1000) return (wh / 1000).toFixed(1) + ' kWh';
   return Math.round(wh) + ' Wh';
 }
-// Circle-masked profile photo; falls back to an initial on the user's accent.
-function avatarEl(u, size = 20) {
-  if (u.profile && u.profile.avatar) {
-    const img = el('img', 'avatar');
-    img.src = `data/${u.slug}/${u.profile.avatar}`;
-    img.alt = '';
-    img.style.width = img.style.height = size + 'px';
-    return img;
-  }
-  const initial = ((u.name || '?').split(/[\s·]+/).filter(Boolean).pop() || '?')[0].toUpperCase();
-  const d = el('span', 'avatar av-fallback', initial);
-  d.style.width = d.style.height = d.style.lineHeight = size + 'px';
-  d.style.background = u.color;
-  d.style.fontSize = Math.round(size * 0.48) + 'px';
-  return d;
+// Avatars live beside each user's published data.
+const avatarEl = (u, size = 20) => avatar({
+  name: u.name, color: u.color,
+  src: u.profile && u.profile.avatar ? `data/${u.slug}/${u.profile.avatar}` : null,
+}, size);
+
+// Per-category score bars (0–10) — an Arena reading of the kit's hbars.
+function scoreBars(container, { cats, color }) {
+  C.hbars(container, {
+    rows: cats.map((c) => ({ label: c.label, value: c.avg, color, _n: c.n })),
+    fmtVal: (v) => v.toFixed(1),
+    maxRows: 10,
+    tooltip: (t, r) => {
+      C.ttTitle(t, r.label);
+      C.ttRow(t, { label: 'avg score', value: r.value.toFixed(2) + ' / 10' });
+      if (r._n) C.ttRow(t, { label: 'prompts graded', value: String(r._n) });
+    },
+  });
 }
+
 function toolIcon(tool, size = 14) {
   const img = el('img', 'tico tico-' + tool);
   img.src = `assets/${tool}.png`;
@@ -349,7 +279,7 @@ function staleTag(u) {
   if (!at) return null;
   const days = Math.floor((Date.now() - at) / 864e5);
   if (days < 21) return null;
-  const t = el('span', 'demo-tag', `${days}d old`);
+  const t = el('span', 'badge', `${days}d old`);
   t.title = `Last analysis ${fmt.date(u.profile.updatedAt)} — stats may be missing recent work`;
   return t;
 }
@@ -365,7 +295,7 @@ function templatesBlock(u) {
     const box = el('div', 'tmpl');
     const bh = el('div', 'tmpl-title');
     bh.appendChild(el('span', null, linked ? linked.title : t.title));
-    const copy = el('button', 'p-copy', 'Copy');
+    const copy = el('button', 'copy-btn', 'Copy');
     copy.addEventListener('click', () => {
       navigator.clipboard.writeText(t.prompt).then(() => { copy.textContent = 'Copied ✓'; setTimeout(() => { copy.textContent = 'Copy'; }, 1200); });
     });
@@ -386,7 +316,7 @@ function traitsReview(u, { curate: canCurate } = {}) {
     const head = el('div', 'tmpl-title');
     head.appendChild(el('span', null, t.title));
     if (canCurate) {
-      const rm = el('button', 'p-copy', 'Remove');
+      const rm = el('button', 'copy-btn', 'Remove');
       rm.addEventListener('click', async () => {
         const res = await fetch('api/habit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ index: i }) }).then((r) => r.json()).catch(() => ({ ok: false }));
         if (res.ok) { u.habits.traits.splice(i, 1); if (!DATA.git.dirty.includes(DATA.me)) DATA.git.dirty.push(DATA.me); updateSetupDot(); render(); }
@@ -408,13 +338,13 @@ function craftDotplot(users) {
   const dpc = chartDiv(dp);
   const cats = Object.keys(CAT_LABELS).filter((c) => scored.some((u) => catAvgs(u)[c]));
   C.dotplot(dpc, {
-    cats: cats.map((c) => ({
+    rows: cats.map((c) => ({
       label: CAT_LABELS[c],
-      scores: Object.fromEntries(scored.map((u) => [u.slug, catAvgs(u)[c]?.avg]).filter(([, v]) => v != null)),
+      values: Object.fromEntries(scored.map((u) => [u.slug, catAvgs(u)[c]?.avg]).filter(([, v]) => v != null)),
       counts: Object.fromEntries(scored.map((u) => [u.slug, catAvgs(u)[c]?.n || 0])),
     })),
-    users: scored.map((u) => ({ slug: u.slug, name: u.name, color: u.color })),
-    fmtVal: (v, c, u) => `${v.toFixed(1)} / 10 · n=${c.counts[u.slug] || 0}`,
+    series: scored.map((u) => ({ key: u.slug, name: u.name, color: u.color })),
+    fmtVal: (v, c, u) => `${v.toFixed(1)} / 10 · n=${c.counts[u.key] || 0}`,
   });
   return dp;
 }
@@ -428,12 +358,12 @@ function techniqueDotplot(users) {
     t, max: Math.max(...techUsers.map((u) => (agg(u).tech[t] || 0) / agg(u).techPrompts)),
   })).sort((a, b) => b.max - a.max).slice(0, 7).map((o) => o.t);
   C.dotplot(tcc, {
-    cats: topTech.map((t) => ({
+    rows: topTech.map((t) => ({
       label: TECH_LABELS[t],
-      scores: Object.fromEntries(techUsers.map((u) => [u.slug, 100 * (agg(u).tech[t] || 0) / agg(u).techPrompts])),
+      values: Object.fromEntries(techUsers.map((u) => [u.slug, 100 * (agg(u).tech[t] || 0) / agg(u).techPrompts])),
       counts: {},
     })),
-    users: techUsers.map((u) => ({ slug: u.slug, name: u.name, color: u.color })),
+    series: techUsers.map((u) => ({ key: u.slug, name: u.name, color: u.color })),
     max: Math.min(100, Math.ceil(Math.max(1, ...topTech.flatMap((t) => techUsers.map((u) => 100 * (agg(u).tech[t] || 0) / agg(u).techPrompts))) / 10) * 10 + 10),
     fmtTick: (v) => v + '%',
     fmtVal: (v) => v.toFixed(1) + '% of prompts',
@@ -500,7 +430,7 @@ function renderTeamOverview() {
   view.appendChild(modelMixCard(mm));
 
   const lb = card('Leaderboard', 'Everyone who has published data, ranked by spend in the window. Cache hit is the share of input served from cache; Prompt score is their AI-graded craft average (0–10). Click a row to scope the whole dashboard to that person.');
-  const tbl = el('table', 'lb');
+  const tbl = el('table', 'dtable');
   const thead = el('thead'); const hr = el('tr');
   for (const h of ['Teammate', 'Cost', 'Tokens', 'Prompts', 'Sessions', 'Active days', 'Best streak', 'Cache hit', 'Prompt score']) hr.appendChild(el('th', null, h));
   thead.appendChild(hr); tbl.appendChild(thead);
@@ -512,7 +442,7 @@ function renderTeamOverview() {
     const tr = el('tr');
     const td0 = el('td');
     const uspan = el('span', 'u'); uspan.appendChild(avatarEl(u, 22)); uspan.appendChild(el('span', null, u.name));
-    if (u.demo) uspan.appendChild(el('span', 'demo-tag', 'DEMO'));
+    if (u.demo) uspan.appendChild(el('span', 'badge', 'DEMO'));
     const st = staleTag(u); if (st) uspan.appendChild(st);
     td0.appendChild(uspan); tr.appendChild(td0);
     const costTd = el('td', 'bar-cell');
@@ -637,8 +567,8 @@ function renderUserOverview(u) {
   view.appendChild(g1);
   const byDay = {};
   for (const s of sessionsOf(u)) for (const [d, rec] of Object.entries(s.days)) byDay[d] = (byDay[d] || 0) + rec.p;
-  C.calendar(calc, { byDay, weeks: 26, fmtVal: fmt.num });
-  C.hours24(hrc, { hours: a.hours, fmtVal: fmt.num });
+  C.calendar(calc, { byDay, weeks: 26, fmtVal: fmt.num, label: 'prompts' });
+  C.hours24(hrc, { values: a.hours, fmtVal: fmt.num, label: 'prompts' });
 
   const g2 = el('div', 'grid g2');
   g2.appendChild(modelMixCard(a.models, 'total tokens in this window'));
@@ -664,12 +594,12 @@ function renderUserOverview(u) {
       'Average AI-graded score per category (0–10), from the shared rubric in About. Trivial asks cap at 5 by design, so mid-range averages are normal; ≥7 becomes a shared example.',
       `overall ${userScore(u).toFixed(1)}/10`);
     const scc = chartDiv(sc); g3.appendChild(sc);
-    C.scoreBars(scc, {
+    scoreBars(scc, {
       cats: Object.entries(avgs).sort((x, y) => y[1].avg - x[1].avg).map(([c, v]) => ({ label: CAT_LABELS[c], avg: v.avg, n: v.n })),
       color: u.color,
     });
     const runs = u.prompts.gradeRuns || [];
-    if (runs.length) sc.appendChild(el('div', 'mini-hint', `graded ${Object.values(u.prompts.categories).reduce((x, c) => x + c.n, 0)} prompts over ${runs.length} run${runs.length > 1 ? 's' : ''} · rubric in About`));
+    if (runs.length) sc.appendChild(el('div', 'hint', `graded ${Object.values(u.prompts.categories).reduce((x, c) => x + c.n, 0)} prompts over ${runs.length} run${runs.length > 1 ? 's' : ''} · rubric in About`));
   } else {
     const sc = card('Prompt craft', 'not graded yet');
     sc.appendChild(el('div', 'empty', u.slug === DATA.me ? 'Run: node arena.js grade' : 'This teammate hasn\'t published grades yet'));
@@ -701,7 +631,7 @@ function renderUserOverview(u) {
       lead.appendChild(el('span', 'p-score' + (e.score >= 8 ? ' s8' : ''), e.score + '/10'));
       lead.appendChild(el('span', 'tmpl-meta', `${CAT_LABELS[e.cat] || e.cat} · ${fmt.date(e.date)}`));
       bh.appendChild(lead);
-      const copy = el('button', 'p-copy', 'Copy');
+      const copy = el('button', 'copy-btn', 'Copy');
       copy.addEventListener('click', () => {
         navigator.clipboard.writeText(e.text).then(() => { copy.textContent = 'Copied ✓'; setTimeout(() => { copy.textContent = 'Copy'; }, 1200); });
       });
@@ -719,7 +649,7 @@ function renderUserOverview(u) {
 
   const st = card('Sessions', 'Sessions touching the window, with their prompts, total tokens (all buckets) and API-equivalent cost. Titles come from the session logs; the icon shows the tool.');
   headerSeg(st, [{ value: 'usd', label: 'By spend' }, { value: 'recent', label: 'Recent' }], state.sessSort, (v) => { state.sessSort = v; render(); });
-  const tbl = el('table', 'sess-table');
+  const tbl = el('table', 'dtable compact');
   const hr = el('tr');
   for (const [h, cls] of [['Session', ''], ['Project', ''], ['Surface', ''], ['Started', ''], ['Prompts', 'num'], ['Tokens', 'num'], ['Cost', 'num']]) hr.appendChild(el('th', cls, h));
   tbl.appendChild(hr);
@@ -759,12 +689,12 @@ function renderStats() {
   const hl = (slug) => slug === state.scope ? 'hl' : '';
 
   const mt = card('Head to head', state.scope !== 'all' ? 'Every published teammate side by side; the scoped teammate is highlighted. All rows respect the sidebar filters.' : 'Every published teammate, side by side. Nudge ratio = short steering messages; compactions/session = thread reuse; reasoning effort = the levels actually used with their models.');
-  const tbl = el('table', 'lb');
+  const tbl = el('table', 'dtable');
   const hr = el('tr'); hr.appendChild(el('th', null, ''));
   for (const u of users) {
     const th = el('th', hl(u.slug));
     const s = el('span', 'u'); s.appendChild(avatarEl(u, 20)); s.appendChild(el('span', null, u.name));
-    if (u.demo) s.appendChild(el('span', 'demo-tag', 'DEMO'));
+    if (u.demo) s.appendChild(el('span', 'badge', 'DEMO'));
     th.appendChild(s); th.style.textAlign = 'right'; hr.appendChild(th);
   }
   tbl.appendChild(hr);
@@ -854,7 +784,7 @@ function promptRow(e, u) {
   bh.appendChild(lead);
   const actions = el('span', 'p-actions');
   if (u && u.slug === DATA.me && DATA.git.repo) {
-    const btn = el('button', 'p-copy', 'Shared ✓');
+    const btn = el('button', 'copy-btn', 'Shared ✓');
     btn.title = 'Click to exclude this prompt from your published examples';
     btn.addEventListener('click', async () => {
       const off = box.classList.contains('p-off');
@@ -866,7 +796,7 @@ function promptRow(e, u) {
     });
     actions.appendChild(btn);
   }
-  const copy = el('button', 'p-copy', 'Copy');
+  const copy = el('button', 'copy-btn', 'Copy');
   copy.addEventListener('click', () => {
     navigator.clipboard.writeText(e.text).then(() => { copy.textContent = 'Copied ✓'; setTimeout(() => { copy.textContent = 'Copy'; }, 1200); });
   });
@@ -955,7 +885,7 @@ function renderShareSection() {
   sp.append(`${fmt.num(all.length)} session summaries · ${fmt.num(totPrompts)} prompts · ${fmt.tok(totTok)} tokens · ≈${fmt.usd(totUsd, true)} API-equivalent · ` +
     `${fmt.date(first)} → ${fmt.date(last)} · machines: ${(me.profile.machines || []).join(', ')}`);
   st.appendChild(sp);
-  const tbl = el('table', 'lb');
+  const tbl = el('table', 'dtable');
   const hr = el('tr');
   for (const h of ['Project', 'Sessions', 'Prompts', 'Est. cost']) hr.appendChild(el('th', null, h));
   tbl.appendChild(hr);
@@ -968,7 +898,7 @@ function renderShareSection() {
     tbl.appendChild(tr);
   }
   st.appendChild(tbl);
-  const hint = el('div', 'mini-hint');
+  const hint = el('div', 'hint');
   hint.style.marginTop = '8px';
   const nTraits = (me.habits && me.habits.traits && me.habits.traits.length) || 0;
   hint.append(`Technique profile: ${nTraits ? `${nTraits} traits ship with this (review them — including evidence quotes — in the habits card below)` : 'none yet (step 3 above)'}. Too broad? Adjust the include list in Data scope.`);
@@ -996,7 +926,7 @@ function renderShareSection() {
         row.appendChild(el('span', 'p-score' + (e.score >= 8 ? ' s8' : ''), e.score + '/10'));
         row.appendChild(el('span', 'pr-cat', CAT_LABELS[e.cat] || e.cat));
         row.appendChild(el('span', 'pr-text', e.text.replace(/\s+/g, ' ').slice(0, 160)));
-        const btn = el('button', 'p-copy', 'Remove');
+        const btn = el('button', 'copy-btn', 'Remove');
         btn.addEventListener('click', async () => { if (await curate(e.cat, e.id, 'exclude')) { updateSetupDot(); render(); } });
         row.appendChild(btn);
         listWrap.appendChild(row);
@@ -1025,7 +955,7 @@ function renderShareSection() {
       row.appendChild(el('span', 'p-score', e.score + '/10'));
       row.appendChild(el('span', 'pr-cat', CAT_LABELS[rec.cat] || rec.cat));
       row.appendChild(el('span', 'pr-text', e.text.replace(/\s+/g, ' ').slice(0, 160)));
-      const btn = el('button', 'p-copy', 'Restore');
+      const btn = el('button', 'copy-btn', 'Restore');
       btn.addEventListener('click', async () => { if (await curate(rec.cat, id, 'include')) { updateSetupDot(); render(); } });
       row.appendChild(btn);
       xc.appendChild(row);
@@ -1180,7 +1110,7 @@ function renderSetup() {
   const steps = el('div', 'steps');
   pipe.appendChild(steps);
   const buttons = [];
-  const logEl = el('div', 'joblog', '');
+  const logEl = el('div', 'mono sm', '');
   logEl.hidden = true;
   const busyUI = () => { for (const b of buttons) b.disabled = true; logEl.hidden = false; };
   const idleUI = () => { for (const b of buttons) b.disabled = false; };
@@ -1483,23 +1413,14 @@ async function reloadData() {
 function buildSidebar() {
   const side = document.getElementById('sidebar');
   side.replaceChildren();
-  const group = (label) => {
-    const g = el('div', 'fgroup');
-    g.appendChild(el('div', 'flabel', label));
-    side.appendChild(g);
-    return g;
-  };
-  const row = (g, { label, active, dotColor, avatar, icon, demo, onPick }) => {
-    const b = el('button', 'frow' + (active ? ' active' : ''));
-    if (avatar) b.appendChild(avatarEl(avatar, 18));
-    else if (icon) b.appendChild(toolIcon(icon, 15));
-    else if (dotColor) { const d = el('span', 'dot'); d.style.background = dotColor; b.appendChild(d); }
-    b.appendChild(el('span', null, label));
-    if (demo) b.appendChild(el('span', 'demo-tag', 'DEMO'));
-    b.addEventListener('click', onPick);
-    g.appendChild(b);
-    return b;
-  };
+  const group = (label) => filterGroup(side, label);
+  // Arena flavours the kit's filter row with user avatars and tool icons
+  const row = (g, { label, active, dotColor, avatar: u, icon, demo, onPick }) =>
+    filterRow(g, {
+      label, active, dotColor, onPick,
+      lead: u ? avatarEl(u, 18) : icon ? toolIcon(icon, 15) : null,
+      badge: demo ? 'DEMO' : null,
+    });
 
   const who = group('Who');
   if (USERS.length <= 7) {
